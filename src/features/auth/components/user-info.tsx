@@ -13,8 +13,6 @@ export function UserInfo() {
 
   const getRoleColor = (role: UserRole) => {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
-        return 'bg-red-100 text-red-800'
       case UserRole.ADMIN:
         return 'bg-blue-100 text-blue-800'
       case UserRole.DOCTOR:
@@ -28,8 +26,6 @@ export function UserInfo() {
 
   const getRoleName = (role: UserRole) => {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
-        return 'Super Administrador'
       case UserRole.ADMIN:
         return 'Administrador'
       case UserRole.DOCTOR:

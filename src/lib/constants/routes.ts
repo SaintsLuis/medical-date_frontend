@@ -19,6 +19,7 @@ export const ROUTES = {
     PRESCRIPTIONS: '/prescriptions',
     ANALYTICS: '/analytics',
     SETTINGS: '/settings',
+    PROFILE: '/profile',
   },
 
   // API routes

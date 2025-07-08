@@ -1,86 +1,177 @@
 // lib/api/client.ts
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
-import { API_BASE_URL } from '@/constants/api-endpoints'
+import { config } from '@/config/app'
+import { API_ENDPOINTS } from '@/constants/api-endpoints'
 
+interface RequestConfig extends RequestInit {
+  params?: Record<string, string>
+}
+
+// Cliente API simplificado para fetch directo al backend NestJS
 class ApiClient {
-  private client: AxiosInstance
+  private baseURL: string
 
   constructor() {
-    this.client = axios.create({
-      baseURL: API_BASE_URL,
-      timeout: 15000,
+    this.baseURL = config.API_BASE_URL
+  }
+
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    // En el cliente, intentar obtener token desde localStorage para Client Components
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem(config.TOKEN_STORAGE_KEY)
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    }
+
+    return headers
+  }
+
+  // Método principal para hacer requests
+  private async request<T>(
+    endpoint: string,
+    options: RequestConfig = {}
+  ): Promise<T> {
+    const { params, headers = {}, ...restOptions } = options
+
+    let url = `${this.baseURL}${endpoint}`
+
+    // Agregar query parameters si existen
+    if (params) {
+      const searchParams = new URLSearchParams(params)
+      url += `?${searchParams.toString()}`
+    }
+
+    const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+        ...headers,
       },
+      ...restOptions,
     })
 
-    this.setupInterceptors()
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.message || `HTTP error! status: ${response.status}`
+      )
+    }
+
+    return response.json()
   }
 
-  private setupInterceptors() {
-    // Request interceptor para agregar token
-    this.client.interceptors.request.use(
-      async (config) => {
-        if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('access_token')
-          if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`
-          }
-        }
-        return config
-      },
-      (error) => Promise.reject(error)
-    )
-
-    // Response interceptor para manejar errores
-    this.client.interceptors.response.use(
-      (response) => response.data,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Token expirado - redirigir a login
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
-            window.location.href = '/login'
-          }
-        }
-        return Promise.reject(error)
-      }
-    )
-  }
-
-  // HTTP Methods
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.client.get(url, config)
+  // Métodos HTTP
+  async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET', params })
   }
 
   async post<T>(
-    url: string,
-    data?: unknown,
-    config?: AxiosRequestConfig
+    endpoint: string,
+    body?: unknown,
+    options?: RequestConfig
   ): Promise<T> {
-    return this.client.post(url, data, config)
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    })
   }
 
-  async patch<T>(
-    url: string,
-    data?: unknown,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
-    return this.client.patch(url, data, config)
+  async patch<T>(endpoint: string, body?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
+    })
   }
 
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.client.delete(url, config)
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' })
   }
 
-  async put<T>(
-    url: string,
-    data?: unknown,
-    config?: AxiosRequestConfig
+  // Método para Server Components que recibe token directamente
+  async getWithToken<T>(
+    endpoint: string,
+    token: string,
+    params?: Record<string, string>
   ): Promise<T> {
-    return this.client.put(url, data, config)
+    let url = `${this.baseURL}${endpoint}`
+
+    if (params) {
+      const searchParams = new URLSearchParams(params)
+      url += `?${searchParams.toString()}`
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store', // Para Server Components
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.message || `HTTP error! status: ${response.status}`
+      )
+    }
+
+    return response.json()
+  }
+
+  // Métodos específicos de la API (usando endpoints constantes)
+
+  // Especialidades
+  async getSpecialties() {
+    return this.get(API_ENDPOINTS.SPECIALTIES.LIST)
+  }
+
+  async createSpecialty(data: { name: string; description?: string }) {
+    return this.post(API_ENDPOINTS.SPECIALTIES.CREATE, data)
+  }
+
+  // Citas
+  async getAppointments(filters?: Record<string, string>) {
+    return this.get(API_ENDPOINTS.APPOINTMENTS.LIST, filters)
+  }
+
+  async createAppointment(data: unknown) {
+    return this.post(API_ENDPOINTS.APPOINTMENTS.CREATE, data)
+  }
+
+  async getAppointment(id: string) {
+    return this.get(API_ENDPOINTS.APPOINTMENTS.DETAIL(id))
+  }
+
+  // Doctores
+  async getDoctors(filters?: Record<string, string>) {
+    return this.get(API_ENDPOINTS.DOCTORS.LIST, filters)
+  }
+
+  // Pacientes
+  async getPatients(filters?: Record<string, string>) {
+    return this.get(API_ENDPOINTS.PATIENTS.LIST, filters)
+  }
+
+  // Clínicas
+  async getClinics() {
+    return this.get(API_ENDPOINTS.CLINICS.LIST)
+  }
+
+  // Analytics
+  async getDashboardStats() {
+    return this.get(API_ENDPOINTS.ANALYTICS.DASHBOARD)
+  }
+
+  // Método para Server Components
+  async getDashboardStatsWithToken(token: string) {
+    return this.getWithToken(API_ENDPOINTS.ANALYTICS.DASHBOARD, token)
   }
 }
 
+// Instancia singleton
 export const apiClient = new ApiClient()
+export default apiClient

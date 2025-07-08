@@ -1,5 +1,7 @@
 # Arquitectura del Frontend - Medical Date
 
+https://nextjs.org/docs/app/getting-started/project-structure
+
 ## Visión General
 
 Este proyecto sigue las mejores prácticas de Next.js 15 con una arquitectura basada en **Server Components** y **features** organizados fuera de la carpeta `app`.
@@ -8,7 +10,7 @@ Este proyecto sigue las mejores prácticas de Next.js 15 con una arquitectura ba
 
 ```
 src/
-├── app/                          # Next.js App Router (Server Components)
+├── app/                          # Next.js 15+ App Router (Server Components)
 │   ├── (auth)/                   # Route group para autenticación
 │   │   ├── layout.tsx           # Layout de autenticación
 │   │   └── login/
@@ -28,18 +30,21 @@ src/
 │   │   │   └── login-form.tsx   # Formulario de login (Client Component)
 │   │   ├── hooks/
 │   │   ├── services/
+│   │   ├── store/
 │   │   └── types/
 │   ├── dashboard/               # Feature del dashboard
 │   │   ├── components/
 │   │   │   ├── dashboard-stats.tsx    # Estadísticas (Client Component)
 │   │   │   └── dashboard-charts.tsx   # Gráficos (Client Component)
 │   │   ├── hooks/
+│   │   ├── store/
 │   │   └── services/
 │   ├── appointments/            # Feature de citas
 │   │   ├── components/
 │   │   │   └── appointments-list.tsx  # Lista de citas (Client Component)
 │   │   ├── hooks/
 │   │   ├── services/
+│   │   ├── store/
 │   │   └── types/
 │   └── layout/                  # Feature de layout
 │       └── components/

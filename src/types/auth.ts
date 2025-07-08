@@ -1,9 +1,10 @@
 // types/auth.ts
+
+// Enums que coinciden exactamente con el backend
 export enum UserRole {
   PATIENT = 'patient',
   DOCTOR = 'doctor',
   ADMIN = 'admin',
-  SUPER_ADMIN = 'super_admin',
 }
 
 export enum Permission {
@@ -30,28 +31,161 @@ export enum Permission {
   VIEW_OWN_PRESCRIPTIONS = 'VIEW_OWN_PRESCRIPTIONS',
 }
 
+// Estructura de usuario que coincide con el backend
+export interface BackendUserRole {
+  role: {
+    id: string
+    name: UserRole
+    description: string
+    permissions?: Array<{
+      permission: {
+        id: string
+        name: string
+        description: string
+        resource: string
+        action: string
+      }
+    }>
+  }
+}
+
+export interface BackendUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  phoneNumber?: string
+  isActive: boolean
+  emailVerified?: boolean
+  lastLoginAt?: string
+  createdAt: string
+  updatedAt: string
+  roles: string[] // El backend devuelve array de strings: ["admin", "doctor"]
+  patientProfile?: PatientProfile
+  doctorProfile?: DoctorProfile
+}
+
+// Interface simplificada para el frontend (transformada del backend)
+export interface User {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  phoneNumber?: string
+  isActive: boolean
+  emailVerified?: boolean
+  roles: UserRole[]
+  createdAt: string
+  updatedAt: string
+  lastLoginAt?: string
+  // Perfiles específicos
+  patientProfile?: PatientProfile
+  doctorProfile?: DoctorProfile
+}
+
+// Respuestas específicas del backend
+export interface BackendAuthResponse {
+  accessToken: string
+  refreshToken: string
+  user?: BackendUser
+  expiresIn?: number
+}
+
+export interface BackendLoginResponse {
+  accessToken: string
+  refreshToken: string
+}
+
+// Type alias en lugar de interface vacía
+export type BackendProfileResponse = BackendUser
+
+// DTOs para requests (coinciden con el backend)
+export interface LoginRequest {
+  email: string
+  password: string
+  rememberMe?: boolean
+}
+
+export interface RegisterPatientRequest {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  phoneNumber?: string
+  dateOfBirth?: string
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  acceptTerms: boolean
+  // Campos opcionales del perfil médico
+  address?: string
+  emergencyContact?: string
+  bloodType?: string
+  allergies?: string[]
+  medicalConditions?: string[]
+  insuranceProvider?: string
+}
+
+export interface CreateDoctorRequest {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  phoneNumber?: string
+  specialtyId: string
+  licenseNumber: string
+  yearsOfExperience?: number
+  consultationFee?: number
+  biography?: string
+}
+
+export interface VerifyEmailRequest {
+  email: string
+  code: string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ResetPasswordRequest {
+  token: string
+  newPassword: string
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string
+}
+
+export interface AuthState {
+  user: User | null
+  token: string | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  permissions: Permission[]
+}
+
+export interface AuthContextType {
+  user: User | null
+  token: string | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  permissions: Permission[]
+  login: (credentials: LoginRequest) => Promise<void>
+  logout: () => void
+  register: (data: RegisterPatientRequest) => Promise<void>
+  hasPermission: (permission: Permission) => boolean
+  hasRole: (role: UserRole) => boolean
+  checkAuth: () => Promise<void>
+}
+
 // Role-based permissions mapping
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  [UserRole.SUPER_ADMIN]: [
-    Permission.MANAGE_DOCTORS,
-    Permission.MANAGE_PATIENTS,
-    Permission.MANAGE_CLINICS,
-    Permission.MANAGE_BILLING,
-    Permission.VIEW_ANALYTICS,
-    Permission.MANAGE_SYSTEM,
-    Permission.VIEW_APPOINTMENTS,
-    Permission.MANAGE_APPOINTMENTS,
-    Permission.VIEW_MEDICAL_RECORDS,
-    Permission.MANAGE_MEDICAL_RECORDS,
-    Permission.MANAGE_PRESCRIPTIONS,
-    Permission.VIEW_PATIENTS,
-  ],
   [UserRole.ADMIN]: [
     Permission.MANAGE_DOCTORS,
     Permission.MANAGE_PATIENTS,
     Permission.MANAGE_CLINICS,
     Permission.MANAGE_BILLING,
     Permission.VIEW_ANALYTICS,
+    Permission.MANAGE_SYSTEM,
     Permission.VIEW_APPOINTMENTS,
     Permission.MANAGE_APPOINTMENTS,
     Permission.VIEW_MEDICAL_RECORDS,
@@ -73,19 +207,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.VIEW_OWN_RECORDS,
     Permission.VIEW_OWN_PRESCRIPTIONS,
   ],
-}
-
-export interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  phoneNumber?: string
-  isActive: boolean
-  roles: UserRole[]
-  createdAt: string
-  updatedAt: string
-}
+} as const
 
 export interface DoctorProfile {
   id: string
@@ -138,46 +260,4 @@ export interface DoctorClinic {
   }
   officeNumber?: string
   isPrimary: boolean
-}
-
-export interface AuthResponse {
-  user: User
-  accessToken: string
-  refreshToken: string
-}
-
-export interface LoginRequest {
-  email: string
-  password: string
-}
-
-export interface RegisterRequest {
-  email: string
-  password: string
-  firstName: string
-  lastName: string
-  phoneNumber?: string
-  role?: UserRole
-}
-
-export interface AuthState {
-  user: User | null
-  token: string | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  permissions: Permission[]
-}
-
-export interface AuthContextType {
-  user: User | null
-  token: string | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  permissions: Permission[]
-  login: (credentials: LoginRequest) => Promise<void>
-  logout: () => void
-  register: (data: RegisterRequest) => Promise<void>
-  hasPermission: (permission: Permission) => boolean
-  hasRole: (role: UserRole) => boolean
-  checkAuth: () => Promise<void>
 }
