@@ -63,6 +63,11 @@ const DIRECT_ITEMS = [
     href: '/settings',
     icon: 'Settings',
   },
+  {
+    name: 'Especialidades',
+    href: '/specialties',
+    icon: 'Pill',
+  },
 ]
 
 // Elementos agrupados

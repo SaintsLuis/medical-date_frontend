@@ -14,13 +14,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ProtectedRoute>
       <SidebarProvider>
-        <div className='flex h-screen'>
+        <div className='flex h-screen w-full'>
           <DashboardSidebar />
-          <SidebarInset>
+          <SidebarInset className='flex flex-1 flex-col overflow-hidden'>
             <DashboardHeader />
-            <main className='flex flex-1 flex-col gap-4 p-4 pt-0'>
-              {/* Los children se renderizan directamente aquí con el espacio completo */}
-              {children}
+            <main className='flex-1 overflow-auto'>
+              <div className='h-full p-4 pt-0'>
+                {/* Los children se renderizan con el ancho completo disponible */}
+                {children}
+              </div>
             </main>
           </SidebarInset>
         </div>

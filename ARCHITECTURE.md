@@ -28,45 +28,26 @@ src/
 │   ├── auth/                    # Feature de autenticación
 │   │   ├── components/
 │   │   │   └── login-form.tsx   # Formulario de login (Client Component)
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── store/
+│   │   ├── actions/             # Server Actions (login, logout, getProfile)
+│   │   ├── store/               # Zustand store para auth
 │   │   └── types/
 │   ├── dashboard/               # Feature del dashboard
 │   │   ├── components/
 │   │   │   ├── dashboard-stats.tsx    # Estadísticas (Client Component)
 │   │   │   └── dashboard-charts.tsx   # Gráficos (Client Component)
-│   │   ├── hooks/
-│   │   ├── store/
-│   │   └── services/
 │   ├── appointments/            # Feature de citas
 │   │   ├── components/
 │   │   │   └── appointments-list.tsx  # Lista de citas (Client Component)
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── store/
-│   │   └── types/
 │   └── layout/                  # Feature de layout
 │       └── components/
 │           ├── dashboard-sidebar.tsx  # Sidebar (Client Component)
 │           └── dashboard-header.tsx   # Header (Client Component)
 ├── components/                   # Componentes UI reutilizables
 │   ├── ui/                      # Componentes de Shadcn/UI
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   └── ...
 │   ├── dashboard/               # Componentes específicos del dashboard
-│   │   ├── cards/
-│   │   ├── charts/
-│   │   └── tables/
 │   └── forms/                   # Formularios reutilizables
 ├── hooks/                       # Custom hooks
-│   └── api/                     # Hooks para llamadas a API
 ├── lib/                         # Utilidades y configuraciones
-│   ├── api/                     # Cliente de API
-│   ├── constants/               # Constantes de la aplicación
-│   ├── utils.ts                 # Utilidades generales
-│   └── validations/             # Esquemas de validación
 ├── store/                       # Estado global (Zustand)
 ├── types/                       # Tipos TypeScript
 └── middleware.ts                # Middleware de Next.js
@@ -92,8 +73,8 @@ src/
 features/
 ├── [feature-name]/
 │   ├── components/              # Componentes específicos del feature
-│   ├── hooks/                   # Custom hooks del feature
-│   ├── services/                # Servicios y lógica de negocio
+│   ├── actions/                 # Server Actions (mutaciones y fetch server-side)
+│   ├── store/                   # Zustand store
 │   ├── types/                   # Tipos específicos del feature
 │   └── utils/                   # Utilidades específicas del feature
 ```
@@ -117,101 +98,120 @@ features/
 - **UI Components**: Componentes reutilizables de UI
 - **Generic Components**: Componentes genéricos sin lógica de negocio
 
-## Patrones de Implementación
+---
 
-### 1. Server Components
+## Autenticación y Server Actions (Patrón Oficial)
+
+### 1. Flujo de Login Seguro (Server Actions + Cookies HTTP-only)
+
+- El formulario de login es un **Client Component** (`login-form.tsx`).
+- El login se realiza mediante una **Server Action** (`loginAction`):
+  - Recibe las credenciales.
+  - Llama al backend y obtiene los tokens.
+  - Setea las cookies `access_token` y `refresh_token` como **HTTP-only**.
+  - Nunca expone los tokens al cliente.
+  - Devuelve `{ success: true }` o `{ success: false, error }`.
+- Tras login exitoso, el cliente:
+  - Llama a `useAuthStore.getState().checkAuth()` para hidratar el estado global y persistirlo en localStorage.
+  - Redirige con `router.replace('/')` (SPA, sin recarga completa).
+
+**Ejemplo real:**
 
 ```tsx
-// app/(dashboard)/dashboard/page.tsx
-import { DashboardStats } from '@/features/dashboard/components/dashboard-stats'
+// features/auth/components/login-form.tsx
+const onSubmit = async (data) => {
+  setIsSubmitting(true)
+  setError('')
+  const result = await loginAction(data)
+  if (result && !result.success) {
+    setError(result.error || 'Error al iniciar sesión')
+  } else {
+    await useAuthStore.getState().checkAuth()
+    router.replace('/')
+  }
+  setIsSubmitting(false)
+}
+```
 
-export default function DashboardPage() {
+```ts
+// features/auth/actions/auth-actions.ts
+'use server'
+export async function loginAction(formData) {
+  // ...fetch al backend...
+  // ...set cookies HTTP-only...
+  return { success: true }
+}
+```
+
+### 2. Flujo de Logout Seguro
+
+- El logout se realiza mediante una **Server Action** (`logoutAction`):
+  - Elimina las cookies HTTP-only.
+  - Redirige a `/login` usando `redirect('/login', RedirectType.replace)`.
+- El cliente limpia el estado global de Zustand.
+
+### 3. Sincronización de Estado (Zustand + Persistencia)
+
+- El store de Zustand (`useAuthStore`) se hidrata:
+  - Al iniciar la app (por el `AuthProvider` o un efecto global).
+  - Tras login exitoso (llamando a `checkAuth()`).
+  - Tras recargar la página (el SSR ya tiene las cookies, el cliente sincroniza el estado).
+- El estado se persiste en localStorage bajo la clave `auth-storage`, pero **los tokens nunca se guardan ahí**.
+- El método `checkAuth()`:
+  - Llama a un Server Action (`getProfileAction`) que lee el token de la cookie y obtiene el perfil del usuario.
+  - Si el token es válido, actualiza el estado global y los permisos.
+  - Si no, limpia el estado y las cookies.
+
+### 4. Protección de Rutas (ProtectedRoute)
+
+- El layout del dashboard y todas las páginas privadas están envueltas en un componente cliente `ProtectedRoute`.
+- Si el usuario **no está autenticado** (`isAuthenticated: false`), se redirige automáticamente a `/login`.
+- Si está autenticado, se renderiza el contenido.
+- El loader se muestra mientras el estado está cargando (`isLoading: true`).
+- Se pueden pasar `requiredPermissions` y `requiredRoles` para protección granular.
+
+**Ejemplo:**
+
+```tsx
+// app/(dashboard)/layout.tsx
+export default function DashboardLayout({ children }) {
   return (
-    <div className='space-y-6'>
-      <h1>Dashboard</h1>
-      <DashboardStats />
-    </div>
+    <ProtectedRoute>
+      {/* ...layout... */}
+      {children}
+    </ProtectedRoute>
   )
 }
 ```
 
-### 2. Client Components
-
 ```tsx
-// features/dashboard/components/dashboard-stats.tsx
-'use client'
-
-import { useState, useEffect } from 'react'
-import { StatsCard } from '@/components/dashboard/cards/stats-card'
-
-export function DashboardStats() {
-  const [stats, setStats] = useState([])
-
+// components/auth/protected-route.tsx
+export function ProtectedRoute({
+  children,
+  requiredPermissions,
+  requiredRoles,
+  fallbackPath = '/login',
+}) {
+  const { isAuthenticated, isLoading, hasPermission, hasRole } = useAuthStore()
   useEffect(() => {
-    // Fetch data
-  }, [])
-
-  return (
-    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-      {stats.map((stat) => (
-        <StatsCard key={stat.id} {...stat} />
-      ))}
-    </div>
-  )
+    if (!isLoading && !isAuthenticated) router.replace(fallbackPath)
+  }, [isAuthenticated, isLoading])
+  if (isLoading) return <Loader />
+  if (!isAuthenticated) return null
+  // ...checks de permisos/roles...
+  return <>{children}</>
 }
 ```
 
-### 3. Custom Hooks
+### 5. Server Actions y Seguridad
 
-```tsx
-// hooks/api/use-appointments.ts
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api/client'
+- Todas las Server Actions deben validar la sesión y los permisos del usuario antes de ejecutar mutaciones.
+- Nunca exponer datos sensibles al cliente.
+- Usar cookies HTTP-only para tokens.
+- Seguir las recomendaciones oficiales de Next.js para Server Actions y seguridad:
+  - https://nextjs.org/docs/app/guides/authentication
 
-export function useAppointments() {
-  return useQuery({
-    queryKey: ['appointments'],
-    queryFn: () => apiClient.get('/appointments').then((res) => res.data),
-  })
-}
-```
-
-### 4. API Client
-
-```tsx
-// lib/api/client.ts
-import axios from 'axios'
-
-export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-```
-
-## Estado Global
-
-### Zustand Store
-
-```tsx
-// store/auth.ts
-import { create } from 'zustand'
-
-interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  login: (token: string, user: User) => void
-  logout: () => void
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  login: (token, user) => set({ user, isAuthenticated: true }),
-  logout: () => set({ user: null, isAuthenticated: false }),
-}))
-```
+---
 
 ## Validación de Datos
 
@@ -220,14 +220,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 ```tsx
 // lib/validations/appointment.ts
 import { z } from 'zod'
-
 export const appointmentSchema = z.object({
   patientId: z.string().min(1, 'El paciente es requerido'),
   doctorId: z.string().min(1, 'El doctor es requerido'),
   date: z.string().min(1, 'La fecha es requerida'),
   time: z.string().min(1, 'La hora es requerida'),
 })
-
 export type AppointmentFormData = z.infer<typeof appointmentSchema>
 ```
 
@@ -272,17 +270,13 @@ __tests__/
 - **Image Optimization**: Optimización de imágenes con Next.js
 - **Caching**: Caching de datos con React Query
 
-### Bundle Analysis
-
-- **Bundle Analyzer**: Análisis del tamaño del bundle
-- **Performance Monitoring**: Monitoreo de performance
-
 ## Seguridad
 
 ### Autenticación
 
-- **JWT Tokens**: Manejo seguro de tokens
-- **Protected Routes**: Rutas protegidas
+- **Cookies HTTP-only**: Tokens nunca expuestos al cliente
+- **Server Actions**: Todas las mutaciones y fetchs sensibles se hacen en el servidor
+- **Protected Routes**: Rutas protegidas con componentes cliente
 - **CSRF Protection**: Protección CSRF
 
 ### Validación
@@ -324,7 +318,7 @@ npm run dev      # Desarrollo local
 import React from 'react' // React
 import { useRouter } from 'next/navigation' // Next.js
 import { Button } from '@/components/ui/button' // UI Components
-import { useAuthStore } from '@/store/auth' // Store
+import { useAuthStore } from '@/features/auth/store/auth' // Store
 import { useAppointments } from '@/hooks/api/use-appointments' // Hooks
 import { apiClient } from '@/lib/api/client' // Utils
 import type { Appointment } from '@/types/appointment' // Types

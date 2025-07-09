@@ -22,46 +22,46 @@ const protectedRoutes = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('access_token')?.value
-  const refreshToken = request.cookies.get('refresh_token')?.value
-  const allCookies = request.cookies.getAll()
+  //const refreshToken = request.cookies.get('refresh_token')?.value
+  //const allCookies = request.cookies.getAll()
 
   // También verificar Authorization header como fallback
   const authHeader = request.headers.get('Authorization')
   const hasAuthToken = token || authHeader?.startsWith('Bearer ')
 
-  console.log('🔍 Middleware Debug:')
-  console.log('  - Pathname:', pathname)
-  console.log('  - Access Token Cookie:', !!token)
-  console.log('  - Access Token Length:', token ? token.length : 0)
-  console.log(
-    '  - Access Token Preview:',
-    token ? `${token.substring(0, 20)}...` : 'none'
-  )
-  console.log('  - Refresh Token Cookie:', !!refreshToken)
-  console.log('  - Authorization Header:', !!authHeader)
-  console.log('  - Has Auth (any method):', hasAuthToken)
-  console.log('  - All Cookies Count:', allCookies.length)
-  console.log(
-    '  - All Cookies Details:',
-    allCookies.map((c) => ({
-      name: c.name,
-      hasValue: !!c.value,
-      valueLength: c.value ? c.value.length : 0,
-      valuePreview: c.value ? `${c.value.substring(0, 10)}...` : 'empty',
-    }))
-  )
+  //console.log('🔍 Middleware Debug:')
+  //console.log('  - Pathname:', pathname)
+  //console.log('  - Access Token Cookie:', !!token)
+  //console.log('  - Access Token Length:', token ? token.length : 0)
+  //console.log(
+  //   '  - Access Token Preview:',
+  //   token ? `${token.substring(0, 20)}...` : 'none'
+  // )
+  // console.log('  - Refresh Token Cookie:', !!refreshToken)
+  // console.log('  - Authorization Header:', !!authHeader)
+  // console.log('  - Has Auth (any method):', hasAuthToken)
+  // console.log('  - All Cookies Count:', allCookies.length)
+  // console.log(
+  //   '  - All Cookies Details:',
+  //   allCookies.map((c) => ({
+  //     name: c.name,
+  //     hasValue: !!c.value,
+  //     valueLength: c.value ? c.value.length : 0,
+  //     valuePreview: c.value ? `${c.value.substring(0, 10)}...` : 'empty',
+  //   }))
+  // )
 
   // Log raw cookie header para debug profundo
-  const rawCookieHeader = request.headers.get('cookie')
-  console.log('  - Raw Cookie Header:', rawCookieHeader)
+  //const rawCookieHeader = request.headers.get('cookie')
+  //console.log('  - Raw Cookie Header:', rawCookieHeader)
 
   // Headers relevantes para debug
-  const relevantHeaders = {
-    cookie: rawCookieHeader,
-    authorization: authHeader,
-    userAgent: request.headers.get('user-agent')?.substring(0, 50) + '...',
-  }
-  console.log('  - Relevant Headers:', relevantHeaders)
+  // const relevantHeaders = {
+  //   cookie: rawCookieHeader,
+  //   authorization: authHeader,
+  //   userAgent: request.headers.get('user-agent')?.substring(0, 50) + '...',
+  // }
+  //console.log('  - Relevant Headers:', relevantHeaders)
 
   // Check if the route is public
   const isPublicRoute = publicRoutes.some(
