@@ -8,6 +8,7 @@ import {
   FileText,
   Pill,
   Settings,
+  Stethoscope,
 } from 'lucide-react'
 
 export const ICON_MAP = {
@@ -20,6 +21,7 @@ export const ICON_MAP = {
   FileText,
   Pill,
   Settings,
+  Stethoscope,
 } as const
 
 export type IconName = keyof typeof ICON_MAP

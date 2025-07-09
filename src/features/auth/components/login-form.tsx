@@ -39,11 +39,14 @@ import {
   Building2,
   Heart,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '../store/auth'
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
 
   const {
     register,
@@ -77,6 +80,9 @@ export function LoginForm() {
 
       if (result && !result.success) {
         setError(result.error || 'Error al iniciar sesión')
+      } else {
+        await useAuthStore.getState().checkAuth()
+        router.replace('/')
       }
     } catch (error) {
       console.error('Login error:', error)

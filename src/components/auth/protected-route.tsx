@@ -37,7 +37,7 @@ export function ProtectedRoute({
         <div className='flex flex-col items-center space-y-4'>
           <Loader2 className='h-8 w-8 animate-spin' />
           <p className='text-sm text-muted-foreground'>
-            Checking authentication...
+            Verificando autenticación...
           </p>
         </div>
       </div>
@@ -60,16 +60,16 @@ export function ProtectedRoute({
         <div className='flex items-center justify-center min-h-screen'>
           <div className='text-center space-y-4'>
             <h1 className='text-2xl font-bold text-destructive'>
-              Access Denied
+              Acceso Denegado
             </h1>
             <p className='text-muted-foreground'>
-              You don&apos;t have permission to access this page.
+              No tienes permisos para acceder a esta página.
             </p>
             <button
               onClick={() => router.back()}
               className='text-primary hover:underline'
             >
-              Go back
+              Volver atrás
             </button>
           </div>
         </div>
@@ -86,16 +86,16 @@ export function ProtectedRoute({
         <div className='flex items-center justify-center min-h-screen'>
           <div className='text-center space-y-4'>
             <h1 className='text-2xl font-bold text-destructive'>
-              Access Denied
+              Acceso Denegado
             </h1>
             <p className='text-muted-foreground'>
-              Your role doesn&apos;t have access to this page.
+              Tu rol no tiene acceso a esta página.
             </p>
             <button
               onClick={() => router.back()}
               className='text-primary hover:underline'
             >
-              Go back
+              Volver atrás
             </button>
           </div>
         </div>

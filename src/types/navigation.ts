@@ -4,7 +4,6 @@ export interface NavigationItem {
   name: string
   href: string
   icon: IconName
-  description: string
 }
 
 export interface NavigationGroup {

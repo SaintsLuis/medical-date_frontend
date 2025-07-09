@@ -158,6 +158,9 @@ export async function loginAction(
 
     // Retornar éxito antes del redirect
     console.log('✅ Login successful, ready for redirect')
+    return {
+      success: true,
+    }
   } catch (error) {
     console.error('Login error:', error)
     return {
@@ -168,7 +171,7 @@ export async function loginAction(
 
   // IMPORTANTE: redirect debe estar fuera del try/catch según mejores prácticas Next.js
   // redirect arroja un error internamente, por lo que debe estar fuera del try/catch
-  redirect('/', RedirectType.replace)
+  //redirect('/', RedirectType.replace)
 }
 
 // Server Action para logout
