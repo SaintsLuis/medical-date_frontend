@@ -18,7 +18,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
-import { NavigationItem } from '@/types/navigation'
+
 import { ICON_MAP } from '@/lib/constants/icons'
 
 // Elementos que van directamente a sus rutas (sin agrupar)
@@ -77,6 +77,10 @@ const GROUPED_ITEMS = [
     icon: 'Users',
     items: [
       {
+        name: 'Gestión de Usuarios',
+        href: '/users',
+      },
+      {
         name: 'Pacientes',
         href: '/patients',
       },
@@ -88,7 +92,7 @@ const GROUPED_ITEMS = [
   },
 ]
 
-export function SidebarItems({ items }: { items: NavigationItem[] }) {
+export function SidebarItems() {
   return (
     <>
       {/* Elementos directos */}

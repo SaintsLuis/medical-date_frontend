@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, Filter, RefreshCw, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, RefreshCw, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -29,8 +29,22 @@ import {
   useDeleteSpecialty,
 } from '../hooks/use-specialties'
 import { SpecialtyForm } from './specialty-form'
-import { SpecialtyCharts } from './specialty-charts'
+// import { SpecialtyCharts } from './specialty-charts'
 import type { Specialty } from '../types'
+
+// Importar componentes de gráficos
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts'
 
 // ===================================
 // Componente principal
@@ -44,7 +58,7 @@ export function SpecialtiesManagement() {
     null
   )
   const [currentPage, setCurrentPage] = useState(1)
-  const [includeDoctorCount, setIncludeDoctorCount] = useState(true)
+  const [includeDoctorCount] = useState(true)
 
   // Hooks para datos
   const {
@@ -217,6 +231,174 @@ export function SpecialtiesManagement() {
     )
   }
 
+  // ===================================
+  // Componentes de Gráficos
+  // ===================================
+
+  const DistributionChart = () => {
+    if (isLoadingStats || !stats) {
+      return (
+        <Card>
+          <CardHeader>
+            <Skeleton className='h-6 w-32' />
+            <Skeleton className='h-4 w-48' />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className='h-64 w-full' />
+          </CardContent>
+        </Card>
+      )
+    }
+
+    // Preparar datos para el gráfico de distribución
+    const distributionData = [
+      {
+        name: 'Con Doctores',
+        value: stats.withDoctors,
+        color: '#10b981', // green-500
+      },
+      {
+        name: 'Sin Doctores',
+        value: Math.max(0, stats.total - stats.withDoctors),
+        color: '#6b7280', // gray-500
+      },
+    ].filter((item) => item.value > 0) // Solo mostrar categorías con valores
+
+    if (distributionData.length === 0) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribución de Especialidades</CardTitle>
+            <CardDescription>
+              Especialidades con y sin doctores asignados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='text-center py-8 text-muted-foreground'>
+              No hay datos disponibles para mostrar
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Distribución de Especialidades</CardTitle>
+          <CardDescription>
+            Especialidades con y sin doctores asignados
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width='100%' height={300}>
+            <PieChart>
+              <Pie
+                data={distributionData}
+                cx='50%'
+                cy='50%'
+                outerRadius={80}
+                fill='#8884d8'
+                dataKey='value'
+                label={({ name, value, percent }) =>
+                  `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`
+                }
+              >
+                {distributionData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const TopSpecialtiesChart = () => {
+    if (isLoadingSpecialties || !specialtiesData) {
+      return (
+        <Card>
+          <CardHeader>
+            <Skeleton className='h-6 w-32' />
+            <Skeleton className='h-4 w-48' />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className='h-64 w-full' />
+          </CardContent>
+        </Card>
+      )
+    }
+
+    // Preparar datos para el gráfico de barras - top 5 especialidades con más doctores
+    const topSpecialties = [...specialtiesData.data]
+      .sort((a, b) => b.doctorCount - a.doctorCount)
+      .slice(0, 5)
+      .map((specialty) => ({
+        name:
+          specialty.name.length > 15
+            ? specialty.name.substring(0, 15) + '...'
+            : specialty.name,
+        doctores: specialty.doctorCount,
+        fullName: specialty.name,
+      }))
+
+    if (topSpecialties.length === 0) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Especialidades con Más Doctores</CardTitle>
+            <CardDescription>
+              Top 5 especialidades por número de doctores
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='text-center py-8 text-muted-foreground'>
+              No hay especialidades con doctores asignados
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Especialidades con Más Doctores</CardTitle>
+          <CardDescription>
+            Top 5 especialidades por número de doctores
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width='100%' height={300}>
+            <BarChart data={topSpecialties}>
+              <CartesianGrid strokeDasharray='3 3' />
+              <XAxis
+                dataKey='name'
+                angle={-45}
+                textAnchor='end'
+                height={80}
+                fontSize={12}
+              />
+              <YAxis />
+              <Tooltip
+                formatter={(value) => [value, 'Doctores']}
+                labelFormatter={(label, payload) => {
+                  if (payload && payload[0]) {
+                    return payload[0].payload.fullName
+                  }
+                  return label
+                }}
+              />
+              <Bar dataKey='doctores' fill='#3b82f6' name='Doctores' />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const SpecialtiesTable = () => {
     if (isLoadingSpecialties) {
       return (
@@ -278,9 +460,9 @@ export function SpecialtiesManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Especialidades Médicas</CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Gestiona las especialidades médicas del sistema
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent className='p-0'>
           {/* Vista desktop: tabla responsive */}
@@ -547,11 +729,19 @@ export function SpecialtiesManagement() {
         <TabsList>
           <TabsTrigger value='overview'>Resumen</TabsTrigger>
           <TabsTrigger value='specialties'>Especialidades</TabsTrigger>
-          <TabsTrigger value='analytics'>📊 Analytics</TabsTrigger>
+          {/* <TabsTrigger value='analytics'>📊 Analytics</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value='overview'>
-          <StatsCards />
+          <div className='space-y-6'>
+            <StatsCards />
+
+            {/* Gráficos */}
+            <div className='grid gap-6 md:grid-cols-2'>
+              <DistributionChart />
+              <TopSpecialtiesChart />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value='specialties' className='space-y-6'>
@@ -569,7 +759,7 @@ export function SpecialtiesManagement() {
                   />
                 </div>
                 <div className='flex items-center gap-2 flex-shrink-0'>
-                  <Button
+                  {/* <Button
                     variant={includeDoctorCount ? 'default' : 'outline'}
                     onClick={() => setIncludeDoctorCount(!includeDoctorCount)}
                     className='whitespace-nowrap h-10'
@@ -582,7 +772,7 @@ export function SpecialtiesManagement() {
                     <span className='sm:hidden'>
                       {includeDoctorCount ? 'Conteo' : 'Simple'}
                     </span>
-                  </Button>
+                  </Button> */}
                   <Button
                     variant='outline'
                     onClick={() => refetchSpecialties()}
@@ -615,9 +805,9 @@ export function SpecialtiesManagement() {
           <SpecialtiesTable />
         </TabsContent>
 
-        <TabsContent value='analytics'>
+        {/* <TabsContent value='analytics'>
           <SpecialtyCharts />
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   )
