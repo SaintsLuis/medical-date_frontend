@@ -2,52 +2,19 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { cookies } from 'next/headers'
-import { config } from '@/config/app'
+import { serverApi, type ServerApiResponse } from '@/lib/api/server-client'
 import {
+  Specialty,
   CreateSpecialtyData,
   UpdateSpecialtyData,
   QuerySpecialtiesParams,
-  Specialty,
   PaginatedSpecialtiesResponse,
   BackendSpecialtyStats,
 } from '../types'
 
-// ===================================
-// Tipos de Respuesta de Acciones
-// ===================================
-
-interface ActionResponse<T> {
-  success: boolean
-  data?: T
-  error?: string | null
-}
-
-// ===================================
-// Helpers
-// ===================================
-
-async function handleApiResponse(response: Response) {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    console.error('API Error:', { status: response.status, errorData })
-    return {
-      success: false,
-      error: errorData.message || `Error: ${response.status}`,
-    }
-  }
-  try {
-    const responseData = await response.json()
-    // La data real está en responseData.data según el wrapper del backend
-    return { success: true, data: responseData.data }
-  } catch (e) {
-    console.error('API JSON Parse Error:', e)
-    return {
-      success: false,
-      error: 'Error al procesar la respuesta del servidor.',
-    }
-  }
-}
+// ==============================================
+// Server Actions con Auto-Refresh Centralizado
+// ==============================================
 
 // ===================================
 // Acciones para Componentes de Servidor
@@ -55,103 +22,50 @@ async function handleApiResponse(response: Response) {
 
 export async function getSpecialties(
   params: QuerySpecialtiesParams
-): Promise<ActionResponse<PaginatedSpecialtiesResponse>> {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
+): Promise<ServerApiResponse<PaginatedSpecialtiesResponse>> {
+  // Construir parámetros de query manualmente
+  const queryParams = new URLSearchParams()
 
-  const query = new URLSearchParams()
-  if (params.page) query.set('page', String(params.page))
-  if (params.limit) query.set('limit', String(params.limit))
-  if (params.search) query.set('search', params.search)
-  if (params.includeInactive)
-    query.set('includeInactive', String(params.includeInactive))
+  if (params.page !== undefined) queryParams.set('page', String(params.page))
+  if (params.limit !== undefined) queryParams.set('limit', String(params.limit))
+  if (params.search) queryParams.set('search', params.search)
+  if (params.includeDoctorCount !== undefined)
+    queryParams.set('includeDoctorCount', String(params.includeDoctorCount))
 
-  try {
-    const response = await fetch(
-      `${config.API_BASE_URL}/specialties?${query}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store',
-      }
-    )
-    return handleApiResponse(response)
-  } catch (error) {
-    console.error('Network error in getSpecialties:', error)
-    return { success: false, error: 'Error de red al obtener especialidades.' }
-  }
+  const queryString = queryParams.toString()
+  const url = `/specialties${queryString ? `?${queryString}` : ''}`
+
+  return serverApi.get<PaginatedSpecialtiesResponse>(url)
 }
 
 export async function getAllActiveSpecialties(): Promise<
-  ActionResponse<Specialty[]>
+  ServerApiResponse<Specialty[]>
 > {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
-
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties/all`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    })
-    return handleApiResponse(response)
-  } catch (error) {
-    console.error('Network error in getAllActiveSpecialties:', error)
-    return { success: false, error: 'Error de red al obtener especialidades.' }
-  }
+  return serverApi.get<Specialty[]>('/specialties/all')
 }
 
 export async function getSpecialtyById(
   id: string
-): Promise<ActionResponse<Specialty>> {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
-
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    })
-    return handleApiResponse(response)
-  } catch (error) {
-    console.error('Network error in getSpecialtyById:', error)
-    return {
-      success: false,
-      error: `Error de red al obtener la especialidad ${id}.`,
-    }
-  }
+): Promise<ServerApiResponse<Specialty>> {
+  return serverApi.get<Specialty>(`/specialties/${id}`)
 }
 
 export async function getSpecialtyStats(): Promise<
-  ActionResponse<BackendSpecialtyStats>
+  ServerApiResponse<BackendSpecialtyStats>
 > {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
+  console.log('🔍 Calling specialty stats endpoint: /specialties/stats')
 
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties/stats`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    })
-    return handleApiResponse(response)
-  } catch (error) {
-    console.error('Network error in getSpecialtyStats:', error)
-    return { success: false, error: 'Error de red al obtener estadísticas.' }
-  }
+  const result = await serverApi.get<BackendSpecialtyStats>(
+    '/specialties/stats'
+  )
+
+  console.log('📊 Specialty stats response:', {
+    success: result.success,
+    hasData: !!result.data,
+    error: result.error,
+  })
+
+  return result
 }
 
 // ===================================
@@ -160,87 +74,37 @@ export async function getSpecialtyStats(): Promise<
 
 export async function createSpecialtyAction(
   data: CreateSpecialtyData
-): Promise<ActionResponse<Specialty>> {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
+): Promise<ServerApiResponse<Specialty>> {
+  const result = await serverApi.post<Specialty>('/specialties', data)
 
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    })
-
-    const result = await handleApiResponse(response)
-    if (result.success) {
-      revalidatePath('/(dashboard)/specialties')
-    }
-    return result
-  } catch (error) {
-    console.error('Network error in createSpecialtyAction:', error)
-    return { success: false, error: 'Error de red al crear la especialidad.' }
+  if (result.success) {
+    revalidatePath('/(dashboard)/specialties')
   }
+
+  return result
 }
 
 export async function updateSpecialtyAction(
   id: string,
   data: UpdateSpecialtyData
-): Promise<ActionResponse<Specialty>> {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
+): Promise<ServerApiResponse<Specialty>> {
+  const result = await serverApi.patch<Specialty>(`/specialties/${id}`, data)
 
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    })
-
-    const result = await handleApiResponse(response)
-    if (result.success) {
-      revalidatePath('/(dashboard)/specialties')
-    }
-    return result
-  } catch (error) {
-    console.error('Network error in updateSpecialtyAction:', error)
-    return {
-      success: false,
-      error: `Error de red al actualizar la especialidad ${id}.`,
-    }
+  if (result.success) {
+    revalidatePath('/(dashboard)/specialties')
   }
+
+  return result
 }
 
 export async function deleteSpecialtyAction(
   id: string
-): Promise<ActionResponse<null>> {
-  const token = (await cookies()).get('access_token')?.value
-  if (!token) return { success: false, error: 'No autenticado' }
+): Promise<ServerApiResponse<null>> {
+  const result = await serverApi.delete<null>(`/specialties/${id}`)
 
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/specialties/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    const result = await handleApiResponse(response)
-    if (result.success) {
-      revalidatePath('/(dashboard)/specialties')
-    }
-    return result
-  } catch (error) {
-    console.error('Network error in deleteSpecialtyAction:', error)
-    return {
-      success: false,
-      error: `Error de red al eliminar la especialidad ${id}.`,
-    }
+  if (result.success) {
+    revalidatePath('/(dashboard)/specialties')
   }
+
+  return result
 }

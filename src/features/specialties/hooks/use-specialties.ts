@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   getSpecialties,
@@ -12,17 +13,16 @@ import {
   deleteSpecialtyAction,
 } from '../actions/specialty-actions'
 import type {
-  QuerySpecialtiesParams,
+  Specialty,
+  SpecialtyStats,
   CreateSpecialtyData,
   UpdateSpecialtyData,
-  Specialty,
+  QuerySpecialtiesParams,
   PaginatedSpecialtiesResponse,
-  SpecialtyStats,
 } from '../types'
-import { useState, useEffect } from 'react'
 
 // ===================================
-// Query Keys
+// Query Keys Factory
 // ===================================
 
 export const specialtyKeys = {
@@ -30,10 +30,10 @@ export const specialtyKeys = {
   lists: () => [...specialtyKeys.all, 'list'] as const,
   list: (params: QuerySpecialtiesParams) =>
     [...specialtyKeys.lists(), params] as const,
+  active: () => [...specialtyKeys.all, 'active'] as const,
   details: () => [...specialtyKeys.all, 'detail'] as const,
   detail: (id: string) => [...specialtyKeys.details(), id] as const,
   stats: () => [...specialtyKeys.all, 'stats'] as const,
-  active: () => [...specialtyKeys.all, 'active'] as const,
 }
 
 // ===================================

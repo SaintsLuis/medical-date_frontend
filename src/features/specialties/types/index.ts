@@ -56,7 +56,7 @@ export interface QuerySpecialtiesParams {
   page?: number
   limit?: number
   search?: string
-  includeInactive?: boolean
+  includeDoctorCount?: boolean
 }
 
 /**

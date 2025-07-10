@@ -1,8 +1,7 @@
 // Environment configuration
 export const config = {
   // Backend API URL - configurar según el entorno
-  API_BASE_URL:
-    process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.11:3001/api',
+  API_BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api',
 
   // Use mock auth only if explicitly enabled (changed default to false)
   USE_MOCK_AUTH: process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true',

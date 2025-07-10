@@ -44,7 +44,7 @@ export function SpecialtiesManagement() {
     null
   )
   const [currentPage, setCurrentPage] = useState(1)
-  const [includeInactive, setIncludeInactive] = useState(false)
+  const [includeDoctorCount, setIncludeDoctorCount] = useState(true)
 
   // Hooks para datos
   const {
@@ -56,7 +56,7 @@ export function SpecialtiesManagement() {
     page: currentPage,
     limit: 10,
     search: searchTerm || undefined,
-    includeInactive,
+    includeDoctorCount,
   })
 
   const {
@@ -570,17 +570,17 @@ export function SpecialtiesManagement() {
                 </div>
                 <div className='flex items-center gap-2 flex-shrink-0'>
                   <Button
-                    variant={includeInactive ? 'default' : 'outline'}
-                    onClick={() => setIncludeInactive(!includeInactive)}
+                    variant={includeDoctorCount ? 'default' : 'outline'}
+                    onClick={() => setIncludeDoctorCount(!includeDoctorCount)}
                     className='whitespace-nowrap h-10'
                     size='sm'
                   >
                     <Filter className='mr-2 h-4 w-4' />
                     <span className='hidden sm:inline'>
-                      {includeInactive ? 'Solo Activas' : 'Mostrar Todas'}
+                      {includeDoctorCount ? 'Con Conteo' : 'Sin Conteo'}
                     </span>
                     <span className='sm:hidden'>
-                      {includeInactive ? 'Activas' : 'Todas'}
+                      {includeDoctorCount ? 'Conteo' : 'Simple'}
                     </span>
                   </Button>
                   <Button
