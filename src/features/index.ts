@@ -27,6 +27,9 @@ export {
   SpecialtyCharts,
 } from './specialties'
 
+// Users Features
+export { UsersManagement, UserForm, UsersSkeleton } from './users'
+
 // Analytics Features
 export { AnalyticsDashboard } from './analytics/components/analytics-dashboard'
 
