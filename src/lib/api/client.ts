@@ -1,177 +1,183 @@
 // lib/api/client.ts
 import { config } from '@/config/app'
-import { API_ENDPOINTS } from '@/constants/api-endpoints'
+import { useAuthStore } from '@/features/auth/store/auth'
 
-interface RequestConfig extends RequestInit {
-  params?: Record<string, string>
-}
-
-// Cliente API simplificado para fetch directo al backend NestJS
-class ApiClient {
+// Configuración del cliente API
+export class ApiClient {
   private baseURL: string
+  private defaultHeaders: HeadersInit
 
-  constructor() {
-    this.baseURL = config.API_BASE_URL
-  }
-
-  private getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+  constructor(baseURL: string = config.API_BASE_URL) {
+    this.baseURL = baseURL
+    this.defaultHeaders = {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     }
-
-    // En el cliente, intentar obtener token desde localStorage para Client Components
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem(config.TOKEN_STORAGE_KEY)
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-    }
-
-    return headers
   }
 
-  // Método principal para hacer requests
-  private async request<T>(
+  // Método principal para hacer requests con auto-refresh
+  async request<T = unknown>(
     endpoint: string,
-    options: RequestConfig = {}
+    options: RequestInit = {}
   ): Promise<T> {
-    const { params, headers = {}, ...restOptions } = options
+    const url = `${this.baseURL}${endpoint}`
 
-    let url = `${this.baseURL}${endpoint}`
-
-    // Agregar query parameters si existen
-    if (params) {
-      const searchParams = new URLSearchParams(params)
-      url += `?${searchParams.toString()}`
+    // Configurar headers por defecto
+    const headers = {
+      ...this.defaultHeaders,
+      ...options.headers,
     }
 
-    const response = await fetch(url, {
-      headers: {
-        ...this.getAuthHeaders(),
-        ...headers,
-      },
-      ...restOptions,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`
-      )
-    }
-
-    return response.json()
-  }
-
-  // Métodos HTTP
-  async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET', params })
-  }
-
-  async post<T>(
-    endpoint: string,
-    body?: unknown,
-    options?: RequestConfig
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+    // Primera tentativa
+    let response = await fetch(url, {
       ...options,
+      headers,
+      credentials: 'include', // Incluir cookies HTTP-only
     })
-  }
 
-  async patch<T>(endpoint: string, body?: unknown): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
-    })
-  }
+    // Si obtenemos 401, intentar refresh automáticamente
+    if (response.status === 401) {
+      console.log('🔄 API call returned 401, attempting token refresh...')
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' })
-  }
+      const { refreshAuth, isRefreshing } = useAuthStore.getState()
 
-  // Método para Server Components que recibe token directamente
-  async getWithToken<T>(
-    endpoint: string,
-    token: string,
-    params?: Record<string, string>
-  ): Promise<T> {
-    let url = `${this.baseURL}${endpoint}`
+      // Si ya hay un refresh en progreso, esperar un poco y reintentar
+      if (isRefreshing) {
+        console.log('⏳ Refresh in progress, waiting...')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      } else {
+        // Intentar refresh
+        const refreshSuccess = await refreshAuth()
 
-    if (params) {
-      const searchParams = new URLSearchParams(params)
-      url += `?${searchParams.toString()}`
+        if (!refreshSuccess) {
+          console.log('❌ Refresh failed, redirecting to login...')
+          // El refresh falló, el store ya hizo logout
+          throw new Error('Session expired')
+        }
+      }
+
+      // Reintentar la request original con el nuevo token
+      console.log('🔄 Retrying original request after refresh...')
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+      })
     }
 
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store', // Para Server Components
-    })
-
+    // Manejar otros errores HTTP
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`
-      )
+      throw new Error(errorData.message || `HTTP Error: ${response.status}`)
     }
 
-    return response.json()
+    // Parsear respuesta JSON
+    const data = await response.json()
+
+    // Si el backend usa la estructura { statusCode, data, timestamp }
+    if (data.statusCode !== undefined && data.data !== undefined) {
+      return data.data as T
+    }
+
+    // Si es una respuesta directa
+    return data as T
   }
 
-  // Métodos específicos de la API (usando endpoints constantes)
-
-  // Especialidades
-  async getSpecialties() {
-    return this.get(API_ENDPOINTS.SPECIALTIES.LIST)
+  // Métodos de conveniencia
+  async get<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'GET',
+    })
   }
 
-  async createSpecialty(data: { name: string; description?: string }) {
-    return this.post(API_ENDPOINTS.SPECIALTIES.CREATE, data)
+  async post<T = unknown>(
+    endpoint: string,
+    data?: unknown,
+    options: RequestInit = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    })
   }
 
-  // Citas
-  async getAppointments(filters?: Record<string, string>) {
-    return this.get(API_ENDPOINTS.APPOINTMENTS.LIST, filters)
+  async put<T = unknown>(
+    endpoint: string,
+    data?: unknown,
+    options: RequestInit = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    })
   }
 
-  async createAppointment(data: unknown) {
-    return this.post(API_ENDPOINTS.APPOINTMENTS.CREATE, data)
+  async patch<T = unknown>(
+    endpoint: string,
+    data?: unknown,
+    options: RequestInit = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    })
   }
 
-  async getAppointment(id: string) {
-    return this.get(API_ENDPOINTS.APPOINTMENTS.DETAIL(id))
+  async delete<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'DELETE',
+    })
   }
 
-  // Doctores
-  async getDoctors(filters?: Record<string, string>) {
-    return this.get(API_ENDPOINTS.DOCTORS.LIST, filters)
-  }
+  // Método para subir archivos
+  async uploadFile<T = unknown>(
+    endpoint: string,
+    file: File,
+    additionalData?: Record<string, string>,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const formData = new FormData()
+    formData.append('file', file)
 
-  // Pacientes
-  async getPatients(filters?: Record<string, string>) {
-    return this.get(API_ENDPOINTS.PATIENTS.LIST, filters)
-  }
+    if (additionalData) {
+      Object.entries(additionalData).forEach(([key, value]) => {
+        formData.append(key, value)
+      })
+    }
 
-  // Clínicas
-  async getClinics() {
-    return this.get(API_ENDPOINTS.CLINICS.LIST)
-  }
-
-  // Analytics
-  async getDashboardStats() {
-    return this.get(API_ENDPOINTS.ANALYTICS.DASHBOARD)
-  }
-
-  // Método para Server Components
-  async getDashboardStatsWithToken(token: string) {
-    return this.getWithToken(API_ENDPOINTS.ANALYTICS.DASHBOARD, token)
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData,
+      headers: {
+        // No incluir Content-Type para FormData, el browser lo configura automáticamente
+        Accept: 'application/json',
+        ...options.headers,
+      },
+    })
   }
 }
 
-// Instancia singleton
+// Instancia global del cliente API
 export const apiClient = new ApiClient()
-export default apiClient
+
+// Hook para usar el cliente API en componentes
+export const useApiClient = () => {
+  return apiClient
+}
+
+// Función helper para verificar si un error es de autenticación
+export const isAuthError = (error: unknown): boolean => {
+  return error instanceof Error && error.message === 'Session expired'
+}

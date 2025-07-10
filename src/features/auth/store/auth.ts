@@ -9,7 +9,11 @@ import {
   BackendUser,
 } from '@/types/auth'
 import { config } from '@/config/app'
-import { logoutAction, getProfileAction } from '../actions/auth-actions'
+import {
+  logoutAction,
+  getProfileAction,
+  refreshTokenAction,
+} from '../actions/auth-actions'
 
 // Transformador para convertir BackendUser a User
 const transformBackendUser = (backendUser: BackendUser): User => {
@@ -57,9 +61,13 @@ interface AuthStore extends AuthState {
   setLoading: (loading: boolean) => void
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
+  refreshAuth: () => Promise<boolean>
   hasPermission: (permission: Permission) => boolean
   hasRole: (role: UserRole) => boolean
   clearAuth: () => void
+  // Nuevo: flag para indicar si se está intentando refresh
+  isRefreshing: boolean
+  setRefreshing: (refreshing: boolean) => void
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -69,6 +77,7 @@ export const useAuthStore = create<AuthStore>()(
       token: null, // Ya no manejamos tokens en el cliente, solo en cookies HTTP-only
       isAuthenticated: false,
       isLoading: false,
+      isRefreshing: false,
       permissions: [],
 
       setUser: (user: User | null) => {
@@ -94,6 +103,10 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: loading })
       },
 
+      setRefreshing: (refreshing: boolean) => {
+        set({ isRefreshing: refreshing })
+      },
+
       logout: async () => {
         try {
           set({ isLoading: true })
@@ -108,6 +121,7 @@ export const useAuthStore = create<AuthStore>()(
             isAuthenticated: false,
             permissions: [],
             isLoading: false,
+            isRefreshing: false,
           })
         } catch (error) {
           console.error('Logout error:', error)
@@ -116,11 +130,49 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      refreshAuth: async (): Promise<boolean> => {
+        const { isRefreshing } = get()
+
+        // Prevenir múltiples refresh simultáneos
+        if (isRefreshing) {
+          console.log('⏳ Refresh already in progress, waiting...')
+          return false
+        }
+
+        try {
+          set({ isRefreshing: true })
+          console.log('🔄 Attempting token refresh from client...')
+
+          const refreshResult = await refreshTokenAction()
+
+          if (refreshResult.success) {
+            console.log('✅ Client-side refresh successful')
+
+            // Actualizar el perfil del usuario con el nuevo token
+            await get().checkAuth()
+
+            return true
+          } else {
+            console.log('❌ Client-side refresh failed:', refreshResult.error)
+
+            // Si el refresh falla, hacer logout
+            get().clearAuth()
+            return false
+          }
+        } catch (error) {
+          console.error('❌ Refresh auth error:', error)
+          get().clearAuth()
+          return false
+        } finally {
+          set({ isRefreshing: false })
+        }
+      },
+
       checkAuth: async () => {
         try {
           set({ isLoading: true })
 
-          // Usar Server Action para obtener perfil
+          // Usar Server Action para obtener perfil (con auto-refresh incluido)
           const userData = await getProfileAction()
 
           if (userData) {
@@ -168,6 +220,7 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: false,
           permissions: [],
           isLoading: false,
+          isRefreshing: false,
         })
 
         // Limpiar storage local
@@ -186,6 +239,7 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,
         // No persistir token ya que usamos cookies HTTP-only
+        // No persistir isRefreshing ya que es un estado temporal
       }),
     }
   )
@@ -195,4 +249,14 @@ export const useAuthStore = create<AuthStore>()(
 export const initializeAuth = async () => {
   const { checkAuth } = useAuthStore.getState()
   await checkAuth()
+}
+
+// 🆕 Hook para manejar refresh automático en calls API
+export const useAuthRefresh = () => {
+  const { refreshAuth, isRefreshing } = useAuthStore()
+
+  return {
+    refreshAuth,
+    isRefreshing,
+  }
 }

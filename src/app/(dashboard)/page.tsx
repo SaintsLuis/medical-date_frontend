@@ -72,7 +72,7 @@ function DashboardSkeleton() {
 
 // Server Component principal - SIMPLIFICADO para evitar errores
 export default async function DashboardPage() {
-  console.log('🔍 Dashboard Page Loading...')
+  //console.log('🔍 Dashboard Page Loading...')
 
   let cookieDebugInfo: CookieDebugInfo
   let serverToken: string | null = null
@@ -80,11 +80,11 @@ export default async function DashboardPage() {
   try {
     // Obtener debug de cookies de forma segura
     cookieDebugInfo = await debugCookies()
-    console.log('✅ Dashboard cookie debug success:', cookieDebugInfo)
+    //console.log('✅ Dashboard cookie debug success:', cookieDebugInfo)
 
     // Obtener token de forma segura
     serverToken = await getServerToken()
-    console.log('✅ Dashboard server token success:', !!serverToken)
+    //.log('✅ Dashboard server token success:', !!serverToken)
   } catch (error) {
     console.error('❌ Dashboard Server Error:', error)
     cookieDebugInfo = { error: 'Failed to load debug info' }
