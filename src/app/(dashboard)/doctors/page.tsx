@@ -1,16 +1,25 @@
-import { DoctorsList } from '@/features/doctors/components/doctors-list'
+import { Suspense } from 'react'
+import { DoctorsManagement } from '@/features/doctors'
+import { DoctorsSkeleton } from '@/features/doctors/components/doctors-skeleton'
+
+// ==============================================
+// Componente de Loading
+// ==============================================
+
+function DoctorsSkeletonWrapper() {
+  return <DoctorsSkeleton />
+}
+
+// ==============================================
+// Página Principal
+// ==============================================
 
 export default function DoctorsPage() {
   return (
-    <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Doctores</h1>
-        <p className='text-muted-foreground'>
-          Gestiona todos los doctores del sistema
-        </p>
-      </div>
-
-      <DoctorsList />
+    <div className='container mx-auto py-6'>
+      <Suspense fallback={<DoctorsSkeletonWrapper />}>
+        <DoctorsManagement />
+      </Suspense>
     </div>
   )
 }

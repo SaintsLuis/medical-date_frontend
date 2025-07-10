@@ -1,3 +1,7 @@
+// ==============================================
+// Exportaciones de Features
+// ==============================================
+
 // Auth Features
 export { LoginForm } from './auth/components/login-form'
 
@@ -14,7 +18,7 @@ export { AppointmentsTable } from './appointments/components/appointments-table'
 export { PatientsList } from './patients/components/patients-list'
 
 // Doctors Features
-export { DoctorsList } from './doctors/components/doctors-list'
+export { DoctorsManagement, DoctorForm, DoctorsSkeleton } from './doctors'
 
 // Clinics Features
 export { ClinicsList } from './clinics/components/clinics-list'
