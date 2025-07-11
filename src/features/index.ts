@@ -15,7 +15,7 @@ export { AppointmentsList } from './appointments/components/appointments-list'
 export { AppointmentsTable } from './appointments/components/appointments-table'
 
 // Patients Features
-export { PatientsList } from './patients/components/patients-list'
+export { PatientsManagement, PatientForm, PatientsSkeleton } from './patients'
 
 // Doctors Features
 export { DoctorsManagement, DoctorForm, DoctorsSkeleton } from './doctors'

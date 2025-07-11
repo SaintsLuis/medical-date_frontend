@@ -38,8 +38,18 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAllActiveSpecialties } from '@/features/specialties/hooks/use-specialties'
-import type { Doctor, DoctorFormData } from '../types'
+import type {
+  Doctor,
+  DoctorFormData,
+  CreateDoctorData,
+  UpdateDoctorData,
+} from '../types'
 import { DOCTOR_FORM_DEFAULTS, DOCTOR_VALIDATION } from '../types'
+import {
+  createDoctorAction,
+  updateDoctorAction,
+  getDoctorById,
+} from '../actions/doctor-actions'
 
 // ==============================================
 // Interfaces
@@ -257,16 +267,101 @@ export function DoctorForm({
     setIsSubmitting(true)
 
     try {
-      // Aquí se llamaría a la mutación correspondiente
-      // Por ahora solo simulamos el éxito
-      console.log('Form data:', formData)
+      if (doctor) {
+        // Actualizar doctor existente
+        const updateData: UpdateDoctorData = {
+          phone: formData.phone,
+          address: formData.address,
+          bio: formData.bio,
+          consultationFee: formData.consultationFee,
+          education: formData.education,
+          experience: formData.experience,
+          languages: formData.languages,
+          timeZone: formData.timeZone,
+          specialtyIds: formData.specialtyIds,
+        }
 
-      // Simular delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log('🔄 Updating doctor:', updateData)
+        const result = await updateDoctorAction(doctor.id, updateData)
 
-      onSuccess?.(doctor as Doctor)
+        if (result.success && result.data) {
+          onSuccess?.(result.data)
+        } else {
+          throw new Error(result.error || 'Error al actualizar doctor')
+        }
+      } else {
+        // Crear nuevo doctor
+        const createData: CreateDoctorData = {
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          license: formData.license,
+          phone: formData.phone,
+          address: formData.address,
+          bio: formData.bio,
+          consultationFee: formData.consultationFee,
+          education: formData.education,
+          experience: formData.experience,
+          languages: formData.languages,
+          timeZone: formData.timeZone,
+        }
+
+        console.log('🆕 Creating doctor with data:', createData)
+        const result = await createDoctorAction(createData)
+
+        console.log('📋 Create doctor result:', result)
+
+        if (result.success && result.data) {
+          // Si la creación fue exitosa, asignar especialidades usando la acción de actualizar
+          if (formData.specialtyIds.length > 0) {
+            console.log(
+              '🏷️ Assigning specialties via update action:',
+              formData.specialtyIds
+            )
+            await updateDoctorAction(result.data.doctorId, {
+              specialtyIds: formData.specialtyIds,
+            })
+          }
+
+          // Obtener el doctor creado para pasarlo al callback
+          const doctorResult = await getDoctorById(result.data.doctorId)
+          if (doctorResult.success && doctorResult.data) {
+            onSuccess?.(doctorResult.data)
+          } else {
+            // Fallback: crear un objeto doctor básico con los datos del formulario
+            const fallbackDoctor: Doctor = {
+              id: result.data.doctorId,
+              user: {
+                id: '',
+                email: formData.email,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phoneNumber: formData.phone,
+                isActive: true,
+              },
+              license: formData.license,
+              phone: formData.phone,
+              address: formData.address,
+              bio: formData.bio,
+              consultationFee: formData.consultationFee,
+              education: formData.education,
+              experience: formData.experience,
+              languages: formData.languages,
+              timeZone: formData.timeZone,
+              specialties: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+            onSuccess?.(fallbackDoctor)
+          }
+        } else {
+          throw new Error(result.error || 'Error al crear doctor')
+        }
+      }
     } catch (error) {
-      console.error('Submit error:', error)
+      console.error('❌ Submit error:', error)
+      // Aquí podrías mostrar un toast o alert con el error
     } finally {
       setIsSubmitting(false)
     }
