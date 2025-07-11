@@ -1,16 +1,13 @@
-import { PatientsList } from '@/features/patients/components/patients-list'
+import { Suspense } from 'react'
+import { PatientsManagement } from '@/features/patients/components/patients-management'
+import { PatientsSkeleton } from '@/features/patients/components/patients-skeleton'
 
 export default function PatientsPage() {
   return (
-    <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Pacientes</h1>
-        <p className='text-muted-foreground'>
-          Gestiona todos los pacientes del sistema
-        </p>
-      </div>
-
-      <PatientsList />
+    <div className='container mx-auto py-6'>
+      <Suspense fallback={<PatientsSkeleton />}>
+        <PatientsManagement />
+      </Suspense>
     </div>
   )
 }

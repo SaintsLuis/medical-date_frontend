@@ -1,16 +1,25 @@
-import { ClinicsList } from '@/features/clinics/components/clinics-list'
+import { Suspense } from 'react'
+import { ClinicsManagement, ClinicsSkeletion } from '@/features/clinics'
+
+function ClinicsSkeletonWrapper() {
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div className='space-y-2'>
+          <div className='h-8 w-48 bg-muted rounded animate-pulse' />
+          <div className='h-4 w-72 bg-muted rounded animate-pulse' />
+        </div>
+        <div className='h-10 w-32 bg-muted rounded animate-pulse' />
+      </div>
+      <ClinicsSkeletion />
+    </div>
+  )
+}
 
 export default function ClinicsPage() {
   return (
-    <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Clínicas</h1>
-        <p className='text-muted-foreground'>
-          Gestiona todas las clínicas del sistema
-        </p>
-      </div>
-
-      <ClinicsList />
-    </div>
+    <Suspense fallback={<ClinicsSkeletonWrapper />}>
+      <ClinicsManagement />
+    </Suspense>
   )
 }

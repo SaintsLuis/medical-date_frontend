@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Medical Date Frontend
 
-## Getting Started
+## 🚀 Configuración de Puertos
 
-First, run the development server:
+| Aplicación                 | Puerto   | URL                   |
+| -------------------------- | -------- | --------------------- |
+| **Frontend Web (Next.js)** | **3001** | http://localhost:3001 |
+| **App Mobile (Expo)**      | **3000** | http://localhost:3000 |
+| **Backend (NestJS)**       | **3002** | http://localhost:3002 |
+
+## 📋 Scripts Disponibles
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Desarrollo con puerto personalizado
+npm run dev              # Ejecuta en puerto 3001
+
+# Producción
+npm run build           # Construir aplicación
+npm run start           # Ejecutar en producción (puerto 3001)
+
+# Calidad de código
+npm run lint            # Verificar ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Variables de Entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Crear archivo `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Backend API URL
+NEXT_PUBLIC_API_URL=http://localhost:3002/api
 
-## Learn More
+# Configuración de autenticación (solo para desarrollo)
+NEXT_PUBLIC_USE_MOCK_AUTH=false
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Inicio Rápido
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Instalar dependencias:**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npm install
+   ```
 
-## Deploy on Vercel
+2. **Iniciar en desarrollo:**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Acceder a la aplicación:**
+   - Frontend: http://localhost:3001
+   - Login con credenciales reales del backend
+
+## 🏗️ Arquitectura
+
+- **Framework:** Next.js 15 con App Router
+- **UI:** Tailwind CSS + Shadcn/UI
+- **Estado:** Zustand
+- **Consultas:** TanStack Query
+- **Autenticación:** Server Actions + Cookies HTTP-only
+- **Formularios:** React Hook Form + Zod
