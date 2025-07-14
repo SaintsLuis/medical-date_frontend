@@ -1,25 +1,10 @@
-import { Suspense } from 'react'
-import { UsersManagement } from '@/features/users'
-import { UsersSkeleton } from '@/features/users/components/users-skeleton'
-
-// ==============================================
-// Componente de Loading
-// ==============================================
-
-function UsersSkeletonWrapper() {
-  return <UsersSkeleton />
-}
-
-// ==============================================
-// Página Principal
-// ==============================================
+import { AdminOnlyRoute } from '@/components/auth/protected-route'
+import { UsersManagement } from '@/features/users/components/users-management'
 
 export default function UsersPage() {
   return (
-    <div className='container mx-auto py-6'>
-      <Suspense fallback={<UsersSkeletonWrapper />}>
-        <UsersManagement />
-      </Suspense>
-    </div>
+    <AdminOnlyRoute>
+      <UsersManagement />
+    </AdminOnlyRoute>
   )
 }

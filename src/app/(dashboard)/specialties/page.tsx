@@ -1,6 +1,5 @@
-import { Suspense } from 'react'
+import { AdminOnlyRoute } from '@/components/auth/protected-route'
 import { SpecialtiesManagement } from '@/features/specialties/components/specialties-management'
-import { SpecialtiesSkeleton } from '@/features/specialties'
 
 // ===================================
 // Page metadata
@@ -17,8 +16,8 @@ export const metadata = {
 
 export default function SpecialtiesPage() {
   return (
-    <Suspense fallback={<SpecialtiesSkeleton />}>
+    <AdminOnlyRoute>
       <SpecialtiesManagement />
-    </Suspense>
+    </AdminOnlyRoute>
   )
 }
