@@ -1,10 +1,5 @@
-import { AdminOnlyRoute } from '@/components/auth/protected-route'
-import { BillingDashboard } from '@/features/billing/components/billing-dashboard'
+import { BillingManagement } from '@/features/billing'
 
 export default function BillingPage() {
-  return (
-    <AdminOnlyRoute>
-      <BillingDashboard />
-    </AdminOnlyRoute>
-  )
+  return <BillingManagement />
 }

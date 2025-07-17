@@ -8,16 +8,11 @@ import {
   startOfDay,
   endOfDay,
   addDays,
-  addHours,
-  addMinutes,
-  subMinutes,
   isSameDay,
   isAfter,
   isBefore,
   differenceInMinutes,
-  differenceInHours,
   eachDayOfInterval,
-  eachHourOfInterval,
   getDay,
   setHours,
   setMinutes,
@@ -37,7 +32,6 @@ import type {
   DoctorAvailabilitySlot,
   AppointmentConflict,
   CalendarTheme,
-  DoctorSchedule,
 } from './types'
 
 // ==============================================
@@ -137,7 +131,7 @@ export function appointmentToCalendarEvent(
   doctor?: Doctor
 ): CalendarEvent {
   const startDate = new Date(appointment.date)
-  const endDate = addMinutes(startDate, appointment.duration)
+  const endDate = addDays(startDate, appointment.duration)
 
   const patientName = appointment.patient
     ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
@@ -298,7 +292,7 @@ export function generateTimeSlots(
   let currentSlot = startTime
 
   while (isBefore(currentSlot, endTime)) {
-    const nextSlot = addMinutes(currentSlot, slotDuration)
+    const nextSlot = addDays(currentSlot, slotDuration)
 
     slots.push({
       start: new Date(currentSlot),
@@ -354,7 +348,7 @@ export function checkAppointmentConflicts(
   }
 
   const newStart = new Date(newAppointment.date)
-  const newEnd = addMinutes(newStart, newAppointment.duration)
+  const newEnd = addDays(newStart, newAppointment.duration)
 
   // Verificar conflictos de tiempo con el mismo doctor
   existingAppointments.forEach((existing) => {
@@ -363,7 +357,7 @@ export function checkAppointmentConflicts(
     if (existing.id === newAppointment.id) return // Si es una actualización
 
     const existingStart = new Date(existing.date)
-    const existingEnd = addMinutes(existingStart, existing.duration)
+    const existingEnd = addDays(existingStart, existing.duration)
 
     // Verificar solapamiento
     if (
@@ -441,7 +435,7 @@ export function findAvailableSlots(
     // Verificar que no haya conflictos
     return !doctorAppointments.some((apt) => {
       const aptStart = new Date(apt.date)
-      const aptEnd = addMinutes(aptStart, apt.duration)
+      const aptEnd = addDays(aptStart, apt.duration)
 
       return isBefore(slot.start, aptEnd) && isAfter(slot.end, aptStart)
     })
@@ -729,7 +723,7 @@ export function validateAppointmentTime(
     } else {
       const startTime = parse(availability.startTime, 'HH:mm', start)
       const endTime = parse(availability.endTime, 'HH:mm', start)
-      const appointmentEnd = addMinutes(start, duration)
+      const appointmentEnd = addDays(start, duration)
 
       if (isBefore(start, startTime) || isAfter(appointmentEnd, endTime)) {
         errors.push('La cita está fuera del horario disponible del doctor')

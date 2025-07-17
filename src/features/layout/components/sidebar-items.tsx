@@ -51,7 +51,7 @@ const DIRECT_ITEMS = [
     name: 'Facturación',
     href: '/billing',
     icon: 'CreditCard',
-    roles: [UserRole.ADMIN], // Solo Admin
+    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
   {
     name: 'Expedientes',

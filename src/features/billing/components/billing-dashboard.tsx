@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -24,8 +24,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Search,
   Filter,
-  Plus,
-  MoreHorizontal,
   DollarSign,
   CreditCard,
   AlertCircle,
@@ -38,130 +36,56 @@ import {
   Eye,
   Receipt,
   Banknote,
-  Wallet,
 } from 'lucide-react'
+import { useAuthStore } from '@/features/auth/store/auth'
+import { UserRole } from '@/types/auth'
+import {
+  useAdminBillingStats,
+  useDoctorBillingStats,
+  useInvoices,
+  useDownloadInvoicePdf,
+} from '../hooks/use-billing'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-// Mock data - replace with actual API calls
-const mockPayments = [
-  {
-    id: 'pay_1',
-    patientId: 'pat_1',
-    appointmentId: 'app_1',
-    amount: 250.0,
-    currency: 'USD',
-    status: 'PAID',
-    method: 'CARD',
-    paymentIntentId: 'pi_1234567890',
-    stripeChargeId: 'ch_1234567890',
+interface Invoice {
+  id: string
+  appointmentId: string
+  amount: number
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+  paymentMethod?: 'PAYPAL' | 'CASH'
+  paymentId?: string
+  paidAt?: string
+  dueDate: string
+  createdAt: string
+  updatedAt: string
+  appointment?: {
+    id: string
+    date: string
+    duration: number
+    type: string
     patient: {
-      id: 'pat_1',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@email.com',
-      phone: '+1 (555) 123-4567',
-      profilePhoto: '/placeholder-avatar.jpg',
-    },
+      id: string
+      firstName: string
+      lastName: string
+      email: string
+    }
     doctor: {
-      id: 'doc_1',
-      firstName: 'Dr. Michael',
-      lastName: 'Chen',
-      specialty: 'Cardiology',
-    },
-    service: {
-      id: 'serv_1',
-      name: 'Cardiology Consultation',
-      description: 'Comprehensive cardiac evaluation and consultation',
-      price: 250.0,
-    },
-    invoice: {
-      id: 'inv_1',
-      number: 'INV-2024-001',
-      dueDate: '2024-01-30T00:00:00Z',
-      issueDate: '2024-01-15T00:00:00Z',
-    },
-    insurance: {
-      provider: 'BlueCross BlueShield',
-      policyNumber: 'BC123456789',
-      claimNumber: 'CLM789012',
-      coverageAmount: 200.0,
-      deductible: 50.0,
-    },
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T10:35:00Z',
-  },
-  {
-    id: 'pay_2',
-    patientId: 'pat_2',
-    appointmentId: 'app_2',
-    amount: 150.0,
-    currency: 'USD',
-    status: 'PENDING',
-    method: 'INSURANCE',
-    patient: {
-      id: 'pat_2',
-      firstName: 'James',
-      lastName: 'Wilson',
-      email: 'james.wilson@email.com',
-      phone: '+1 (555) 234-5678',
-      profilePhoto: '/placeholder-avatar.jpg',
-    },
-    doctor: {
-      id: 'doc_2',
-      firstName: 'Dr. Lisa',
-      lastName: 'Thompson',
-      specialty: 'Endocrinology',
-    },
-    service: {
-      id: 'serv_2',
-      name: 'Diabetes Management',
-      description: 'Comprehensive diabetes care and management',
-      price: 150.0,
-    },
-    invoice: {
-      id: 'inv_2',
-      number: 'INV-2024-002',
-      dueDate: '2024-02-10T00:00:00Z',
-      issueDate: '2024-01-20T00:00:00Z',
-    },
-    insurance: {
-      provider: 'Aetna',
-      policyNumber: 'AET987654321',
-      claimNumber: 'CLM345678',
-      coverageAmount: 120.0,
-      deductible: 30.0,
-    },
-    createdAt: '2024-01-20T14:15:00Z',
-    updatedAt: '2024-01-20T14:15:00Z',
-  },
-]
-
-const mockMetrics = {
-  totalRevenue: 125670.5,
-  revenueThisMonth: 18430.25,
-  pendingPayments: 12,
-  failedPayments: 3,
-  totalTransactions: 1247,
-  averageTransactionValue: 186.75,
-  paymentsByMethod: {
-    CARD: 756,
-    INSURANCE: 345,
-    CASH: 89,
-    BANK_TRANSFER: 45,
-    CHECK: 12,
-  },
-  revenueByMonth: [
-    { month: 'Jan', revenue: 18430.25, transactions: 125 },
-    { month: 'Dec', revenue: 16890.5, transactions: 118 },
-    { month: 'Nov', revenue: 19245.75, transactions: 134 },
-    { month: 'Oct', revenue: 17656.25, transactions: 121 },
-    { month: 'Sep', revenue: 18990.0, transactions: 128 },
-  ],
-  topServices: [
-    { service: 'General Consultation', revenue: 45230.0, count: 234 },
-    { service: 'Cardiology Consultation', revenue: 32145.5, count: 156 },
-    { service: 'Orthopedic Consultation', revenue: 28675.25, count: 123 },
-    { service: 'Dental Cleaning', revenue: 19890.75, count: 189 },
-  ],
+      id: string
+      firstName: string
+      lastName: string
+      email: string
+    }
+  }
+  payments?: Array<{
+    id: string
+    amount: number
+    currency: string
+    status: string
+    paymentMethod: string
+    paymentId: string
+    createdAt: string
+    updatedAt: string
+  }>
 }
 
 export function BillingDashboard() {
@@ -169,34 +93,82 @@ export function BillingDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
   const [activeTab, setActiveTab] = useState('payments')
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
 
-  const filteredPayments = mockPayments.filter((payment) => {
-    const matchesSearch =
-      searchTerm === '' ||
-      `${payment.patient.firstName} ${payment.patient.lastName}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      payment.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.invoice?.number.toLowerCase().includes(searchTerm.toLowerCase())
+  const { user } = useAuthStore()
+  const isDoctor = user?.roles.includes(UserRole.DOCTOR)
 
-    const matchesStatus =
-      selectedStatus === 'ALL' || payment.status === selectedStatus
-    const matchesMethod =
-      selectedMethod === 'ALL' || payment.method === selectedMethod
+  // Billing stats
+  const {
+    data: adminData,
+    isLoading: adminLoading,
+    error: adminError,
+  } = useAdminBillingStats(!isDoctor)
 
-    return matchesSearch && matchesStatus && matchesMethod
+  const {
+    data: doctorData,
+    isLoading: doctorLoading,
+    error: doctorError,
+  } = useDoctorBillingStats(isDoctor)
+
+  // Invoices data
+  const {
+    data: invoicesData,
+    isLoading: invoicesLoading,
+    error: invoicesError,
+    refetch: refetchInvoices,
+  } = useInvoices({
+    page,
+    limit,
+    status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+    includeAppointment: true,
+    includePayments: true,
   })
 
+  // PDF download
+  const downloadPdf = useDownloadInvoicePdf()
+
+  const stats = isDoctor ? doctorData : adminData
+  const isLoading = isDoctor ? doctorLoading : adminLoading
+  const error = isDoctor ? doctorError : adminError
+
+  // Filter invoices based on search and filters
+  const filteredInvoices =
+    invoicesData?.data?.filter((invoice: Invoice) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        `${invoice.appointment?.patient.firstName} ${invoice.appointment?.patient.lastName}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        invoice.appointment?.doctor.firstName
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        invoice.id.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesStatus =
+        selectedStatus === 'ALL' || invoice.status === selectedStatus
+
+      const matchesMethod =
+        selectedMethod === 'ALL' || invoice.paymentMethod === selectedMethod
+
+      return matchesSearch && matchesStatus && matchesMethod
+    }) || []
+
+  const handleDownloadPdf = async (invoiceId: string) => {
+    await downloadPdf.mutateAsync(invoiceId)
+  }
+
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     })
   }
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
+  const formatCurrency = (amount: number, currency: string = 'DOP') => {
+    return new Intl.NumberFormat('es-DO', {
       style: 'currency',
       currency: currency,
     }).format(amount)
@@ -208,7 +180,7 @@ export function BillingDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PAID':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800'
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800'
@@ -216,236 +188,287 @@ export function BillingDashboard() {
         return 'bg-red-100 text-red-800'
       case 'REFUNDED':
         return 'bg-blue-100 text-blue-800'
-      case 'CANCELLED':
-        return 'bg-gray-100 text-gray-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getMethodIcon = (method: string) => {
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return 'Completado'
+      case 'PENDING':
+        return 'Pendiente'
+      case 'FAILED':
+        return 'Fallido'
+      case 'REFUNDED':
+        return 'Reembolsado'
+      default:
+        return status
+    }
+  }
+
+  const getMethodIcon = (method?: string) => {
     switch (method) {
-      case 'CARD':
+      case 'PAYPAL':
         return <CreditCard className='h-4 w-4' />
       case 'CASH':
         return <Banknote className='h-4 w-4' />
-      case 'BANK_TRANSFER':
-        return <Wallet className='h-4 w-4' />
-      case 'INSURANCE':
-        return <Receipt className='h-4 w-4' />
-      case 'CHECK':
-        return <FileText className='h-4 w-4' />
       default:
         return <DollarSign className='h-4 w-4' />
     }
   }
 
-  const MetricsCards = () => (
-    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
-      <Card>
-        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <CardTitle className='text-sm font-medium'>Total Revenue</CardTitle>
-          <DollarSign className='h-4 w-4 text-muted-foreground' />
-        </CardHeader>
-        <CardContent>
-          <div className='text-2xl font-bold'>
-            {formatCurrency(mockMetrics.totalRevenue)}
-          </div>
-          <p className='text-xs text-muted-foreground'>
-            +{formatCurrency(mockMetrics.revenueThisMonth)} this month
-          </p>
-        </CardContent>
-      </Card>
+  const getMethodText = (method?: string) => {
+    switch (method) {
+      case 'PAYPAL':
+        return 'PayPal'
+      case 'CASH':
+        return 'Efectivo'
+      default:
+        return 'No especificado'
+    }
+  }
 
-      <Card>
-        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <CardTitle className='text-sm font-medium'>Transactions</CardTitle>
-          <Receipt className='h-4 w-4 text-muted-foreground' />
-        </CardHeader>
-        <CardContent>
-          <div className='text-2xl font-bold'>
-            {mockMetrics.totalTransactions.toLocaleString()}
-          </div>
-          <p className='text-xs text-muted-foreground'>
-            Avg: {formatCurrency(mockMetrics.averageTransactionValue)}
-          </p>
-        </CardContent>
-      </Card>
+  const MetricsCards = () => {
+    if (isLoading) {
+      return (
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <div className='h-4 bg-gray-200 rounded w-20 animate-pulse' />
+                <div className='h-4 w-4 bg-gray-200 rounded animate-pulse' />
+              </CardHeader>
+              <CardContent>
+                <div className='h-8 bg-gray-200 rounded w-24 mb-2 animate-pulse' />
+                <div className='h-3 bg-gray-200 rounded w-32 animate-pulse' />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )
+    }
 
-      <Card>
-        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <CardTitle className='text-sm font-medium'>Pending</CardTitle>
-          <Clock className='h-4 w-4 text-muted-foreground' />
-        </CardHeader>
-        <CardContent>
-          <div className='text-2xl font-bold'>
-            {mockMetrics.pendingPayments}
-          </div>
-          <p className='text-xs text-muted-foreground'>Awaiting payment</p>
-        </CardContent>
-      </Card>
+    if (error || !stats) {
+      return (
+        <Alert variant='destructive'>
+          <AlertCircle className='h-4 w-4' />
+          <AlertDescription>
+            Error al cargar las estadísticas de facturación.{' '}
+            <Button
+              variant='link'
+              size='sm'
+              onClick={() => window.location.reload()}
+              className='p-0 h-auto'
+            >
+              Intentar de nuevo
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )
+    }
 
-      <Card>
-        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <CardTitle className='text-sm font-medium'>Failed</CardTitle>
-          <AlertCircle className='h-4 w-4 text-muted-foreground' />
-        </CardHeader>
-        <CardContent>
-          <div className='text-2xl font-bold'>{mockMetrics.failedPayments}</div>
-          <p className='text-xs text-muted-foreground'>Require attention</p>
-        </CardContent>
-      </Card>
-    </div>
-  )
+    return (
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>
+              Ingresos Totales
+            </CardTitle>
+            <DollarSign className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>
+              {formatCurrency(stats.invoices.totalRevenue)}
+            </div>
+            <p className='text-xs text-muted-foreground'>
+              {formatCurrency(stats.invoices.pendingRevenue)} pendientes
+            </p>
+          </CardContent>
+        </Card>
 
-  const PaymentCard = ({ payment }: { payment: any }) => (
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>Transacciones</CardTitle>
+            <Receipt className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>
+              {stats.payments.total.toLocaleString()}
+            </div>
+            <p className='text-xs text-muted-foreground'>
+              {stats.payments.completed} completadas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>
+              Facturas Pendientes
+            </CardTitle>
+            <Clock className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>{stats.invoices.pending}</div>
+            <p className='text-xs text-muted-foreground'>
+              {stats.invoices.overdue} vencidas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>
+              Pagos Fallidos
+            </CardTitle>
+            <AlertCircle className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold'>{stats.payments.failed}</div>
+            <p className='text-xs text-muted-foreground'>Requieren atención</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const InvoiceCard = ({ invoice }: { invoice: Invoice }) => (
     <Card className='transition-all hover:shadow-md'>
       <CardHeader className='pb-3'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-3'>
-            <div className='p-2 bg-green-100 rounded-full'>
-              {getMethodIcon(payment.method)}
+            <div className='p-2 bg-blue-100 rounded-full'>
+              {getMethodIcon(invoice.paymentMethod)}
             </div>
             <div>
-              <CardTitle className='text-lg'>{payment.service.name}</CardTitle>
+              <CardTitle className='text-lg'>
+                Factura #{invoice.id.slice(-8)}
+              </CardTitle>
               <CardDescription className='flex items-center gap-2'>
-                {payment.invoice?.number} • {formatCurrency(payment.amount)}
+                {formatCurrency(invoice.amount)} •{' '}
+                {formatDate(invoice.createdAt)}
               </CardDescription>
             </div>
           </div>
           <div className='flex items-center space-x-2'>
-            <Badge className={getStatusColor(payment.status)}>
-              {payment.status}
+            <Badge className={getStatusColor(invoice.status)}>
+              {getStatusText(invoice.status)}
             </Badge>
             <Button variant='ghost' size='sm'>
-              <MoreHorizontal className='h-4 w-4' />
+              {/* Eliminar cualquier referencia a MoreHorizontal. */}
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className='space-y-4'>
-        <div className='grid grid-cols-2 gap-4'>
-          <div className='flex items-center space-x-2'>
-            <Avatar className='h-6 w-6'>
-              <AvatarImage
-                src={payment.patient.profilePhoto}
-                alt={`${payment.patient.firstName} ${payment.patient.lastName}`}
-              />
-              <AvatarFallback className='text-xs'>
-                {getInitials(
-                  payment.patient.firstName,
-                  payment.patient.lastName
-                )}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className='text-sm font-medium'>
-                {payment.patient.firstName} {payment.patient.lastName}
-              </div>
-              <div className='text-xs text-muted-foreground'>Patient</div>
-            </div>
-          </div>
-          {payment.doctor && (
-            <div className='flex items-center space-x-2'>
-              <div className='p-1 bg-blue-100 rounded-full'>
-                <Users className='h-3 w-3 text-blue-600' />
-              </div>
-              <div>
-                <div className='text-sm font-medium'>
-                  {payment.doctor.firstName} {payment.doctor.lastName}
+        {invoice.appointment && (
+          <>
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='flex items-center space-x-2'>
+                <Avatar className='h-6 w-6'>
+                  <AvatarFallback className='text-xs'>
+                    {getInitials(
+                      invoice.appointment.patient.firstName,
+                      invoice.appointment.patient.lastName
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className='text-sm font-medium'>
+                    {invoice.appointment.patient.firstName}{' '}
+                    {invoice.appointment.patient.lastName}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>Paciente</div>
                 </div>
-                <div className='text-xs text-muted-foreground'>
-                  {payment.doctor.specialty}
+              </div>
+              <div className='flex items-center space-x-2'>
+                <div className='p-1 bg-green-100 rounded-full'>
+                  <Users className='h-3 w-3 text-green-600' />
+                </div>
+                <div>
+                  <div className='text-sm font-medium'>
+                    Dr. {invoice.appointment.doctor.firstName}{' '}
+                    {invoice.appointment.doctor.lastName}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>Médico</div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+
+            <div className='grid grid-cols-2 gap-4 text-sm'>
+              <div className='flex items-center space-x-2'>
+                <Calendar className='h-4 w-4 text-muted-foreground' />
+                <div>
+                  <div className='font-medium'>Cita</div>
+                  <div className='text-muted-foreground'>
+                    {formatDate(invoice.appointment.date)}
+                  </div>
+                </div>
+              </div>
+              <div className='flex items-center space-x-2'>
+                <Clock className='h-4 w-4 text-muted-foreground' />
+                <div>
+                  <div className='font-medium'>Duración</div>
+                  <div className='text-muted-foreground'>
+                    {invoice.appointment.duration} min
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         <div className='grid grid-cols-2 gap-4 text-sm'>
           <div className='flex items-center space-x-2'>
             <DollarSign className='h-4 w-4 text-muted-foreground' />
             <div>
-              <div className='font-medium'>Amount</div>
+              <div className='font-medium'>Monto</div>
               <div className='text-muted-foreground'>
-                {formatCurrency(payment.amount)}
+                {formatCurrency(invoice.amount)}
               </div>
             </div>
           </div>
           <div className='flex items-center space-x-2'>
-            <Calendar className='h-4 w-4 text-muted-foreground' />
+            <CreditCard className='h-4 w-4 text-muted-foreground' />
             <div>
-              <div className='font-medium'>Date</div>
+              <div className='font-medium'>Método</div>
               <div className='text-muted-foreground'>
-                {formatDate(payment.createdAt)}
+                {getMethodText(invoice.paymentMethod)}
               </div>
             </div>
           </div>
         </div>
 
         <div className='text-sm'>
-          <div className='font-medium mb-1'>Service:</div>
+          <div className='font-medium mb-1'>Vencimiento:</div>
           <div className='text-muted-foreground'>
-            {payment.service.description}
+            {formatDate(invoice.dueDate)}
           </div>
-        </div>
-
-        <Separator />
-
-        <div className='space-y-2'>
-          {payment.insurance && (
-            <div className='flex items-start space-x-2 text-sm'>
-              <Receipt className='h-4 w-4 text-blue-500 mt-0.5' />
-              <div>
-                <div className='font-medium'>
-                  Insurance: {payment.insurance.provider}
-                </div>
-                <div className='text-muted-foreground'>
-                  Coverage: {formatCurrency(payment.insurance.coverageAmount)} •
-                  Deductible: {formatCurrency(payment.insurance.deductible)}
-                </div>
-                {payment.insurance.claimNumber && (
-                  <div className='text-xs text-muted-foreground'>
-                    Claim: {payment.insurance.claimNumber}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {payment.failureReason && (
-            <div className='flex items-start space-x-2 text-sm'>
-              <AlertCircle className='h-4 w-4 text-red-500 mt-0.5' />
-              <div>
-                <div className='font-medium text-red-600'>Failure Reason:</div>
-                <div className='text-red-500'>{payment.failureReason}</div>
-              </div>
-            </div>
-          )}
         </div>
 
         <Separator />
 
         <div className='flex justify-between items-center'>
           <div className='text-xs text-muted-foreground'>
-            {payment.invoice && <div>Invoice: {payment.invoice.number}</div>}
-            <div>Method: {payment.method}</div>
+            <div>ID: {invoice.id}</div>
+            <div>Creado: {formatDate(invoice.createdAt)}</div>
           </div>
           <div className='space-x-2'>
             <Button variant='outline' size='sm'>
               <Eye className='mr-2 h-4 w-4' />
-              View
+              Ver
             </Button>
-            <Button variant='outline' size='sm'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => handleDownloadPdf(invoice.id)}
+              disabled={downloadPdf.isPending}
+            >
               <Download className='mr-2 h-4 w-4' />
-              Receipt
+              {downloadPdf.isPending ? 'Descargando...' : 'PDF'}
             </Button>
-            {payment.status === 'FAILED' && (
-              <Button size='sm'>
-                <RefreshCw className='mr-2 h-4 w-4' />
-                Retry
-              </Button>
-            )}
           </div>
         </div>
       </CardContent>
@@ -457,20 +480,20 @@ export function BillingDashboard() {
       <div className='grid gap-4 md:grid-cols-2'>
         <Card>
           <CardHeader>
-            <CardTitle>Payment Methods</CardTitle>
+            <CardTitle>Métodos de Pago</CardTitle>
           </CardHeader>
           <CardContent>
             <div className='space-y-3'>
-              {Object.entries(mockMetrics.paymentsByMethod).map(
-                ([method, count]) => (
+              {stats?.payments.byMethod.map(
+                (item: { method: string; count: number; amount: number }) => (
                   <div
-                    key={method}
+                    key={item.method}
                     className='flex items-center justify-between'
                   >
                     <div className='flex items-center space-x-2'>
-                      {getMethodIcon(method)}
+                      {getMethodIcon(item.method)}
                       <span className='font-medium'>
-                        {method.replace('_', ' ')}
+                        {getMethodText(item.method)}
                       </span>
                     </div>
                     <div className='flex items-center space-x-2'>
@@ -479,13 +502,13 @@ export function BillingDashboard() {
                           className='bg-blue-600 h-2 rounded-full'
                           style={{
                             width: `${
-                              (count / mockMetrics.totalTransactions) * 100
+                              (item.count / stats.payments.total) * 100
                             }%`,
                           }}
                         />
                       </div>
                       <span className='text-sm text-muted-foreground'>
-                        {count}
+                        {item.count}
                       </span>
                     </div>
                   </div>
@@ -497,75 +520,58 @@ export function BillingDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Services</CardTitle>
+            <CardTitle>Ingresos por Mes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className='space-y-3'>
-              {mockMetrics.topServices.map((service, index) => (
-                <div key={index} className='flex items-center justify-between'>
-                  <div>
-                    <div className='font-medium'>{service.service}</div>
-                    <div className='text-sm text-muted-foreground'>
-                      {service.count} transactions
+              {stats?.monthlyRevenue.slice(0, 5).map(
+                (
+                  month: {
+                    month: string
+                    revenue: number
+                    invoiceCount: number
+                    paymentCount: number
+                  },
+                  index: number
+                ) => (
+                  <div
+                    key={index}
+                    className='flex items-center justify-between'
+                  >
+                    <div>
+                      <div className='font-medium'>{month.month}</div>
+                      <div className='text-sm text-muted-foreground'>
+                        {month.invoiceCount} facturas
+                      </div>
+                    </div>
+                    <div className='text-right'>
+                      <div className='font-medium'>
+                        {formatCurrency(month.revenue)}
+                      </div>
                     </div>
                   </div>
-                  <div className='text-right'>
-                    <div className='font-medium'>
-                      {formatCurrency(service.revenue)}
-                    </div>
-                    <div className='text-sm text-muted-foreground'>
-                      {formatCurrency(service.revenue / service.count)} avg
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Monthly Revenue</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='space-y-3'>
-            {mockMetrics.revenueByMonth.map((month, index) => (
-              <div key={index} className='flex items-center justify-between'>
-                <span className='font-medium'>{month.month}</span>
-                <div className='flex items-center space-x-4'>
-                  <div className='text-right'>
-                    <div className='font-medium'>
-                      {formatCurrency(month.revenue)}
-                    </div>
-                    <div className='text-sm text-muted-foreground'>
-                      {month.transactions} transactions
-                    </div>
-                  </div>
-                  <div className='w-32 bg-gray-200 rounded-full h-2'>
-                    <div
-                      className='bg-green-600 h-2 rounded-full'
-                      style={{
-                        width: `${
-                          (month.revenue /
-                            Math.max(
-                              ...mockMetrics.revenueByMonth.map(
-                                (m) => m.revenue
-                              )
-                            )) *
-                          100
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
+
+  if (invoicesLoading && !invoicesData) {
+    return (
+      <div className='space-y-6'>
+        <MetricsCards />
+        <div className='text-center py-12'>
+          <RefreshCw className='h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground' />
+          <div className='text-muted-foreground'>
+            Cargando datos de facturación...
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className='space-y-6'>
@@ -576,46 +582,58 @@ export function BillingDashboard() {
         onValueChange={setActiveTab}
         className='space-y-4'
       >
-        <TabsList>
-          <TabsTrigger value='payments'>Payments</TabsTrigger>
-          <TabsTrigger value='analytics'>Analytics</TabsTrigger>
-        </TabsList>
+        <div className='flex items-center justify-between'>
+          <TabsList>
+            <TabsTrigger value='payments'>Facturas</TabsTrigger>
+            <TabsTrigger value='analytics'>Analíticas</TabsTrigger>
+          </TabsList>
+
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => refetchInvoices()}
+            disabled={invoicesLoading}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${
+                invoicesLoading ? 'animate-spin' : ''
+              }`}
+            />
+            Actualizar
+          </Button>
+        </div>
 
         <TabsContent value='payments' className='space-y-4'>
           <div className='flex items-center space-x-2'>
             <div className='relative flex-1'>
               <Search className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
               <Input
-                placeholder='Search payments...'
+                placeholder='Buscar facturas...'
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className='pl-10'
               />
             </div>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className='w-32'>
-                <SelectValue placeholder='Status' />
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='Estado' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='ALL'>All</SelectItem>
-                <SelectItem value='PAID'>Paid</SelectItem>
-                <SelectItem value='PENDING'>Pending</SelectItem>
-                <SelectItem value='FAILED'>Failed</SelectItem>
-                <SelectItem value='REFUNDED'>Refunded</SelectItem>
-                <SelectItem value='CANCELLED'>Cancelled</SelectItem>
+                <SelectItem value='ALL'>Todos</SelectItem>
+                <SelectItem value='PENDING'>Pendiente</SelectItem>
+                <SelectItem value='COMPLETED'>Completado</SelectItem>
+                <SelectItem value='FAILED'>Fallido</SelectItem>
+                <SelectItem value='REFUNDED'>Reembolsado</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedMethod} onValueChange={setSelectedMethod}>
-              <SelectTrigger className='w-32'>
-                <SelectValue placeholder='Method' />
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='Método' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='ALL'>All</SelectItem>
-                <SelectItem value='CARD'>Card</SelectItem>
-                <SelectItem value='CASH'>Cash</SelectItem>
-                <SelectItem value='BANK_TRANSFER'>Bank Transfer</SelectItem>
-                <SelectItem value='INSURANCE'>Insurance</SelectItem>
-                <SelectItem value='CHECK'>Check</SelectItem>
+                <SelectItem value='ALL'>Todos</SelectItem>
+                <SelectItem value='PAYPAL'>PayPal</SelectItem>
+                <SelectItem value='CASH'>Efectivo</SelectItem>
               </SelectContent>
             </Select>
             <Button variant='outline' size='icon'>
@@ -623,16 +641,54 @@ export function BillingDashboard() {
             </Button>
           </div>
 
+          {invoicesError && (
+            <Alert variant='destructive'>
+              <AlertCircle className='h-4 w-4' />
+              <AlertDescription>
+                Error al cargar las facturas. Por favor, intenta de nuevo.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-            {filteredPayments.map((payment) => (
-              <PaymentCard key={payment.id} payment={payment} />
+            {filteredInvoices.map((invoice: Invoice) => (
+              <InvoiceCard key={invoice.id} invoice={invoice} />
             ))}
           </div>
 
-          {filteredPayments.length === 0 && (
+          {filteredInvoices.length === 0 && !invoicesLoading && (
             <div className='text-center py-12'>
+              <FileText className='h-12 w-12 mx-auto mb-4 text-muted-foreground' />
               <div className='text-muted-foreground'>
-                No payments found matching your criteria.
+                No se encontraron facturas que coincidan con los criterios.
+              </div>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {invoicesData?.meta && invoicesData.meta.totalPages > 1 && (
+            <div className='flex items-center justify-between'>
+              <div className='text-sm text-muted-foreground'>
+                Página {page} de {invoicesData.meta.totalPages} (
+                {invoicesData.meta.total} facturas)
+              </div>
+              <div className='space-x-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setPage(page - 1)}
+                  disabled={!invoicesData.meta.hasPreviousPage}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setPage(page + 1)}
+                  disabled={!invoicesData.meta.hasNextPage}
+                >
+                  Siguiente
+                </Button>
               </div>
             </div>
           )}
