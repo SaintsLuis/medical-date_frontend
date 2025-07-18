@@ -13,6 +13,7 @@ export class ApiClient {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     }
+    console.log('🔧 ApiClient initialized with baseURL:', this.baseURL)
   }
 
   // Método principal para hacer requests con auto-refresh
@@ -21,6 +22,14 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
+    const method = options.method || 'GET'
+
+    console.log(`🌐 API Request: ${method} ${url}`)
+    console.log('📋 Request options:', {
+      method,
+      headers: options.headers,
+      body: options.body ? 'Present' : 'None',
+    })
 
     // Configurar headers por defecto
     const headers = {
@@ -28,12 +37,20 @@ export class ApiClient {
       ...options.headers,
     }
 
+    console.log('📤 Request headers:', headers)
+
     // Primera tentativa
     let response = await fetch(url, {
       ...options,
       headers,
       credentials: 'include', // Incluir cookies HTTP-only
     })
+
+    console.log(`📥 Response status: ${response.status} ${response.statusText}`)
+    console.log(
+      '📥 Response headers:',
+      Object.fromEntries(response.headers.entries())
+    )
 
     // Si obtenemos 401, intentar refresh automáticamente
     if (response.status === 401) {
@@ -63,23 +80,35 @@ export class ApiClient {
         headers,
         credentials: 'include',
       })
+
+      console.log(
+        `📥 Retry response status: ${response.status} ${response.statusText}`
+      )
     }
 
     // Manejar otros errores HTTP
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      console.error('❌ API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      })
       throw new Error(errorData.message || `HTTP Error: ${response.status}`)
     }
 
     // Parsear respuesta JSON
     const data = await response.json()
+    console.log('📦 Response data:', data)
 
     // Si el backend usa la estructura { statusCode, data, timestamp }
     if (data.statusCode !== undefined && data.data !== undefined) {
+      console.log('✅ API call successful, returning data')
       return data.data as T
     }
 
     // Si es una respuesta directa
+    console.log('✅ API call successful, returning direct response')
     return data as T
   }
 

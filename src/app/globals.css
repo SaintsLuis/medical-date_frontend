@@ -120,3 +120,397 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+
+
+
+
+/* ================================================
+   ESTILOS PERSONALIZADOS PARA REACT-BIG-CALENDAR
+   ================================================ */
+
+/* Importar estilos base de react-big-calendar */
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+/* Estilos personalizados para el calendario médico */
+.medical-calendar {
+  height: 100%;
+  font-family: inherit;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-calendar {
+  border: none;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Headers del calendario */
+.rbc-header {
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  font-weight: 500;
+  padding: 12px 8px;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+}
+
+.rbc-header + .rbc-header {
+  border-left: 1px solid hsl(var(--border));
+}
+
+/* Time gutter (columna de horas) */
+.rbc-time-view .rbc-time-gutter {
+  border-right: 1px solid hsl(var(--border));
+  background: oklch(var(--muted) / 0.5);
+  width: 70px;
+}
+
+.rbc-time-view .rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-gutter .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  text-align: right;
+  padding-right: 8px;
+}
+
+/* Time slots */
+.rbc-time-slot {
+  border-top: 1px solid hsl(var(--border));
+  min-height: 40px;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-content {
+  border-left: 1px solid hsl(var(--border));
+}
+
+/* Eventos/Citas */
+.rbc-day-slot .rbc-event {
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  padding: 4px 6px;
+  margin: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rbc-day-slot .rbc-event:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  z-index: 10;
+}
+
+.rbc-day-slot .rbc-event:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Eventos por estado */
+.appointment-event.appointment-scheduled {
+  background-color: hsl(217, 91%, 85%);
+  color: hsl(217, 91%, 25%);
+  border-left: 4px solid hsl(217, 91%, 60%);
+}
+
+.appointment-event.appointment-confirmed {
+  background-color: hsl(142, 76%, 85%);
+  color: hsl(142, 76%, 25%);
+  border-left: 4px solid hsl(142, 76%, 45%);
+}
+
+.appointment-event.appointment-completed {
+  background-color: hsl(142, 69%, 90%);
+  color: hsl(142, 69%, 30%);
+  border-left: 4px solid hsl(142, 69%, 50%);
+}
+
+.appointment-event.appointment-cancelled {
+  background-color: hsl(0, 84%, 85%);
+  color: hsl(0, 84%, 30%);
+  border-left: 4px solid hsl(0, 84%, 60%);
+  opacity: 0.7;
+  filter: grayscale(20%);
+}
+
+.appointment-event.appointment-no_show {
+  background-color: hsl(45, 93%, 85%);
+  color: hsl(45, 93%, 25%);
+  border-left: 4px solid hsl(45, 93%, 47%);
+}
+
+/* Vista mensual */
+.rbc-month-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-month-row {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-month-row:last-child {
+  border-bottom: none;
+}
+
+.rbc-date-cell {
+  border-right: 1px solid hsl(var(--border));
+  padding: 8px;
+  min-height: 120px;
+}
+
+.rbc-date-cell:last-child {
+  border-right: none;
+}
+
+.rbc-date-cell.rbc-off-range {
+  background-color: oklch(var(--muted) / 0.3);
+  color: hsl(var(--muted-foreground));
+}
+
+.rbc-date-cell.rbc-off-range .rbc-button-link {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Día actual */
+.rbc-today {
+  background-color: oklch(var(--primary) / 0.1);
+}
+
+.rbc-date-cell.rbc-today {
+  background-color: oklch(var(--primary) / 0.05);
+}
+
+.rbc-date-cell.rbc-today .rbc-button-link {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Botones de fecha */
+.rbc-button-link {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.rbc-button-link:hover {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+/* Selección de slots */
+.rbc-selected {
+  background-color: oklch(var(--primary) / 0.1);
+}
+
+.rbc-selecting {
+  background-color: oklch(var(--primary) / 0.2);
+}
+
+/* Current time indicator */
+.rbc-current-time-indicator {
+  background-color: hsl(var(--destructive));
+  height: 2px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Popup */
+.rbc-overlay {
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: hsl(var(--popover-foreground));
+}
+
+.rbc-overlay-header {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 8px 12px;
+  font-weight: 600;
+  background-color: hsl(var(--muted));
+}
+
+/* Agenda view */
+.rbc-agenda-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.rbc-agenda-view table.rbc-agenda-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.rbc-agenda-view .rbc-agenda-table tbody > tr > td {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 12px;
+  vertical-align: top;
+}
+
+.rbc-agenda-view .rbc-agenda-table tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+.rbc-agenda-date-cell {
+  background-color: oklch(var(--muted) / 0.5);
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.rbc-agenda-time-cell {
+  background-color: oklch(var(--muted) / 0.3);
+  font-weight: 500;
+  min-width: 100px;
+}
+
+/* Scrollbar personalizado para el calendario */
+.rbc-time-content {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--background));
+}
+
+.rbc-time-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rbc-time-content::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground));
+  border-radius: 4px;
+  border: 2px solid hsl(var(--background));
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--foreground));
+}
+
+/* Dark mode adjustments */
+.dark .rbc-calendar {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.dark .rbc-off-range {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .rbc-today {
+  background-color: oklch(var(--primary) / 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .rbc-time-view .rbc-time-gutter {
+    width: 50px;
+  }
+  
+  .rbc-time-gutter .rbc-time-slot {
+    font-size: 10px;
+    padding-right: 4px;
+  }
+  
+  .rbc-day-slot .rbc-event {
+    font-size: 11px;
+    padding: 2px 4px;
+  }
+  
+  .rbc-date-cell {
+    min-height: 80px;
+    padding: 4px;
+  }
+  
+  .rbc-button-link {
+    font-size: 12px;
+  }
+}
+
+/* Animaciones suaves */
+@media (prefers-reduced-motion: no-preference) {
+  .rbc-event {
+    transition: all 0.2s ease;
+  }
+  
+  .rbc-button-link {
+    transition: all 0.15s ease;
+  }
+  
+  .rbc-day-slot .rbc-event:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Estados de loading */
+.calendar-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.calendar-loading .rbc-calendar {
+  filter: blur(1px);
+}
+
+/* Herramientas de accesibilidad */
+.rbc-event:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.rbc-button-link:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+/* Slot de tiempo seleccionable */
+.rbc-time-slot.rbc-selectable {
+  cursor: pointer;
+}
+
+.rbc-time-slot.rbc-selectable:hover {
+  background-color: oklch(var(--muted) / 0.3);
+}
+
+/* Personalización de eventos drag & drop */
+.rbc-addons-dnd .rbc-event {
+  cursor: move;
+}
+
+.rbc-addons-dnd .rbc-event.rbc-addons-dnd-dragging {
+  opacity: 0.75;
+  transform: rotate(3deg);
+}
+
+.rbc-addons-dnd .rbc-addons-dnd-drag-preview {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Slot de drop target */
+.rbc-addons-dnd .rbc-addons-dnd-drop-over {
+  background-color: oklch(var(--primary) / 0.2);
+  border: 2px dashed hsl(var(--primary));
+} 

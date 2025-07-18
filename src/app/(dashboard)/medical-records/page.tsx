@@ -1,4 +1,4 @@
-import { MedicalRecordsList } from '@/features/medical-records/components/medical-records-list'
+import { MedicalRecordsManagement } from '@/features/medical-records'
 
 export default function MedicalRecordsPage() {
   return (
@@ -10,7 +10,7 @@ export default function MedicalRecordsPage() {
         </p>
       </div>
 
-      <MedicalRecordsList />
+      <MedicalRecordsManagement />
     </div>
   )
 }
