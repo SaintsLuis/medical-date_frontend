@@ -99,7 +99,7 @@ export async function getPatientMedicalRecordsByUserIdAction(
   if (params.search) queryParams.append('search', params.search)
   if (params.followUpOnly) queryParams.append('followUpOnly', 'true')
 
-  const url = `/medical-records/patient/user/${userId}${
+  const url = `/medical-records/patient-by-user/${userId}${
     queryParams.toString() ? `?${queryParams.toString()}` : ''
   }`
 
