@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarInset className='flex flex-1 flex-col overflow-hidden'>
             <DashboardHeader />
             <main className='flex-1 overflow-auto'>
-              <div className='h-full p-4 pt-0'>
+              <div className='h-full p-6 pt-4'>
                 {/* Los children se renderizan con el ancho completo disponible */}
                 {children}
               </div>
