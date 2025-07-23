@@ -5,7 +5,7 @@ import type {
 } from '../../types'
 
 // Re-export types for components
-export type { AppointmentStatus, AppointmentType }
+//export type { Appointment }
 
 // Tipos específicos para el calendario médico
 // Compatibilidad con el tipo Doctor de features/doctors/types
@@ -458,3 +458,5 @@ export interface AvailabilityRequest {
   preferredTimes?: string[] // ['09:00', '14:00']
   excludeExisting?: boolean
 }
+
+export type { Appointment, AppointmentStatus, AppointmentType }

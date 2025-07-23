@@ -31,6 +31,7 @@ import {
   useUpdateAppointment,
 } from '@/hooks/api/use-appointments'
 import { toast } from 'sonner'
+import { AppointmentStatus, AppointmentType } from '@/types/appointment'
 
 interface AppointmentFormProps {
   isOpen: boolean
@@ -70,11 +71,24 @@ export function AppointmentForm({
       if (isEditing) {
         await updateAppointment.mutateAsync({
           id: appointment.id,
-          data,
+          data: { ...data, status: data.status as AppointmentStatus },
         })
         toast.success('Cita actualizada correctamente')
       } else {
-        await createAppointment.mutateAsync(data)
+        // Transformar los datos del formulario al formato requerido por CreateAppointmentRequest
+        const createData = {
+          patientId: data.patientId,
+          doctorId: data.doctorId,
+          clinicId: data.clinicId,
+          specialtyId: data.specialtyId,
+          date: `${data.appointmentDate}T${data.appointmentTime}`,
+          duration: 30, // O el valor que corresponda
+          type: 'IN_PERSON' as AppointmentType, // O el valor que corresponda
+          reason: data.reason,
+          status: data.status as AppointmentStatus,
+          notes: data.notes,
+        }
+        await createAppointment.mutateAsync(createData)
         toast.success('Cita creada correctamente')
       }
       onClose()
@@ -136,7 +150,7 @@ export function AppointmentForm({
                 <SelectContent>
                   {doctors.map((doctor) => (
                     <SelectItem key={doctor.id} value={doctor.id}>
-                      Dr. {doctor.firstName} {doctor.lastName}
+                      {doctor.firstName} {doctor.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>

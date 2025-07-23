@@ -5,6 +5,7 @@ import { DashboardSidebar } from '@/features/layout/components/dashboard-sidebar
 import { DashboardHeader } from '@/features/layout/components/dashboard-header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { ProtectedRoute } from '@/components/auth/protected-route'
+import { Toaster } from '@/components/ui/sonner'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -22,6 +23,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className='h-full p-6 pt-4'>
                 {/* Los children se renderizan con el ancho completo disponible */}
                 {children}
+                <Toaster position='top-right' />
               </div>
             </main>
           </SidebarInset>

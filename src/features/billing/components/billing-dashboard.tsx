@@ -389,7 +389,7 @@ export function BillingDashboard() {
                 </div>
                 <div>
                   <div className='text-sm font-medium'>
-                    Dr. {invoice.appointment.doctor.firstName}{' '}
+                    {invoice.appointment.doctor.firstName}{' '}
                     {invoice.appointment.doctor.lastName}
                   </div>
                   <div className='text-xs text-muted-foreground'>Médico</div>

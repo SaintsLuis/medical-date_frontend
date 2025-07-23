@@ -57,7 +57,7 @@ export async function getPatients(
  * Obtener todos los pacientes (sin paginación).
  */
 export async function getAllPatients(): Promise<ServerApiResponse<Patient[]>> {
-  return serverApi.get<Patient[]>('/patients?limit=1000')
+  return serverApi.get<Patient[]>('/patients?limit=100')
 }
 
 /**

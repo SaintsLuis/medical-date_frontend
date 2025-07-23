@@ -22,6 +22,8 @@ export function AppointmentsList() {
   // Determinar qué parámetros de filtrado usar basado en el rol del usuario
   const getFilterParams = () => {
     const baseParams = {
+      page: 1,
+      limit: 100, // Respeta el límite del backend
       includePatient: true,
       includeDoctor: true,
       sortByDate: 'asc' as const,
@@ -159,7 +161,7 @@ export function AppointmentsList() {
                     </span>
                     <span className='text-muted-foreground'>→</span>
                     <span className='font-medium'>
-                      Dr. {appointment.doctor?.firstName || 'N/A'}{' '}
+                      {appointment.doctor?.firstName || 'N/A'}{' '}
                       {appointment.doctor?.lastName || ''}
                     </span>
                   </div>

@@ -12,9 +12,7 @@ export const appointmentSchema = z.object({
     .min(1, 'El motivo es requerido')
     .max(500, 'Máximo 500 caracteres'),
   notes: z.string().optional(),
-  status: z
-    .enum(['SCHEDULED', 'CONFIRMED', 'CANCELLED', 'COMPLETED'])
-    .default('SCHEDULED'),
+  status: z.enum(['SCHEDULED', 'CONFIRMED', 'CANCELLED', 'COMPLETED']),
 })
 
 export const appointmentUpdateSchema = appointmentSchema.partial()

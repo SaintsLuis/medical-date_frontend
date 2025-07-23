@@ -469,7 +469,7 @@ export function BillingManagement() {
                     {invoice.appointment && (
                       <div>
                         <div className='font-medium'>
-                          Dr. {invoice.appointment.doctor.firstName}{' '}
+                          {invoice.appointment.doctor.firstName}{' '}
                           {invoice.appointment.doctor.lastName}
                         </div>
                         <div className='text-sm text-muted-foreground'>
@@ -617,7 +617,7 @@ export function BillingManagement() {
                       </label>
                       <div className='mt-1'>
                         <div className='font-medium'>
-                          Dr. {selectedInvoice.appointment.doctor.firstName}{' '}
+                          {selectedInvoice.appointment.doctor.firstName}{' '}
                           {selectedInvoice.appointment.doctor.lastName}
                         </div>
                         <div className='text-sm text-muted-foreground'>
