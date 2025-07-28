@@ -363,9 +363,13 @@ export function useDeleteMedicalRecord() {
       // Remove the specific record from cache
       queryClient.removeQueries({ queryKey: medicalRecordKeys.detail(id) })
 
-      // Invalidate list queries
+      // Invalidate ALL medical record queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: medicalRecordKeys.all })
+
+      // Also invalidate specific query patterns to be extra sure
       queryClient.invalidateQueries({ queryKey: medicalRecordKeys.lists() })
       queryClient.invalidateQueries({ queryKey: medicalRecordKeys.followUp() })
+      queryClient.invalidateQueries({ queryKey: medicalRecordKeys.analytics() })
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Error al eliminar el registro médico')

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useForm, FormProvider } from 'react-hook-form'
+import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
+import { useForm, FormProvider, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -25,7 +26,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Activity, FileText, Stethoscope, Clock, Save, X } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import {
+  Activity,
+  FileText,
+  Stethoscope,
+  Clock,
+  Save,
+  X,
+  AlertCircle,
+  Info,
+  User,
+  Calendar,
+  Thermometer,
+  Heart,
+  Weight,
+  Ruler,
+  Wind,
+} from 'lucide-react'
 import { useAuthStore } from '@/features/auth/store/auth'
 import { UserRole } from '@/types/auth'
 import {
@@ -45,31 +63,107 @@ import { MedicalRecordFormSkeleton } from './medical-records-skeleton'
 import { PatientSelector } from './patient-selector'
 import { PatientDisplay } from './patient-display'
 
-// Form validation schema
+// Enhanced validation schema with better error messages
 const createMedicalRecordSchema = (isEditMode: boolean) =>
   z.object({
     patientProfileId: isEditMode
       ? z.string().optional()
-      : z.string().min(1, 'Selecciona un paciente'),
-    date: z.string().min(1, 'La fecha es requerida'),
-    category: z.nativeEnum(MedicalRecordCategory).optional(),
-    priority: z.nativeEnum(Priority).optional(),
-    symptoms: z.string().min(1, 'Los síntomas son requeridos').max(1000),
-    diagnosis: z.string().min(1, 'El diagnóstico es requerido').max(1000),
-    treatment: z.string().max(2000).optional(),
-    notes: z.string().max(2000).optional(),
+      : z.string().min(1, 'Debes seleccionar un paciente'),
+    date: z.string().min(1, 'La fecha de consulta es obligatoria'),
+    category: z
+      .nativeEnum(MedicalRecordCategory, {
+        errorMap: () => ({ message: 'Selecciona una categoría válida' }),
+      })
+      .optional(),
+    priority: z
+      .nativeEnum(Priority, {
+        errorMap: () => ({ message: 'Selecciona una prioridad válida' }),
+      })
+      .optional(),
+    symptoms: z
+      .string()
+      .min(10, 'Los síntomas deben tener al menos 10 caracteres')
+      .max(1000, 'Los síntomas no pueden exceder 1000 caracteres'),
+    diagnosis: z
+      .string()
+      .min(10, 'El diagnóstico debe tener al menos 10 caracteres')
+      .max(1000, 'El diagnóstico no puede exceder 1000 caracteres'),
+    treatment: z
+      .string()
+      .max(2000, 'El tratamiento no puede exceder 2000 caracteres')
+      .optional(),
+    notes: z
+      .string()
+      .max(2000, 'Las notas no pueden exceder 2000 caracteres')
+      .optional(),
     followUpDate: z.string().optional(),
-    // Allergies as a single text field for simplicity
-    allergiesText: z.string().optional(),
-    // Vital signs
-    bloodPressure: z.string().optional(),
-    heartRate: z.number().min(30).max(250).optional(),
-    temperature: z.number().min(30).max(45).optional(),
-    weight: z.number().min(0.5).max(500).optional(),
-    height: z.number().min(30).max(250).optional(),
-    oxygenSaturation: z.number().min(50).max(100).optional(),
-    respiratoryRate: z.number().min(8).max(60).optional(),
-    vitalSignsNotes: z.string().max(500).optional(),
+    allergiesText: z
+      .string()
+      .max(500, 'Las alergias no pueden exceder 500 caracteres')
+      .optional(),
+    // Vital signs with better validation
+    bloodPressure: z
+      .string()
+      .regex(/^\d{2,3}\/\d{2,3}$|^$/, 'Formato: 120/80')
+      .optional(),
+    heartRate: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 30 && parseFloat(val) <= 250),
+        {
+          message: 'La frecuencia cardíaca debe ser entre 30 y 250 bpm',
+        }
+      ),
+    temperature: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 30 && parseFloat(val) <= 45),
+        {
+          message: 'La temperatura debe ser entre 30°C y 45°C',
+        }
+      ),
+    weight: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 5 && parseFloat(val) <= 330),
+        {
+          message: 'El peso debe ser entre 5 y 330 lbs',
+        }
+      ),
+    height: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 20 && parseFloat(val) <= 80),
+        {
+          message: 'La altura debe ser entre 20 y 80 pulgadas',
+        }
+      ),
+    oxygenSaturation: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 70 && parseFloat(val) <= 100),
+        {
+          message: 'La saturación debe ser entre 70% y 100%',
+        }
+      ),
+    respiratoryRate: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || (parseFloat(val) >= 8 && parseFloat(val) <= 60),
+        {
+          message: 'La frecuencia respiratoria debe ser entre 8 y 60 rpm',
+        }
+      ),
+    vitalSignsNotes: z
+      .string()
+      .max(500, 'Las notas no pueden exceder 500 caracteres')
+      .optional(),
   })
 
 type MedicalRecordFormData = z.infer<
@@ -84,6 +178,81 @@ interface MedicalRecordFormProps {
   onSuccess?: () => void
 }
 
+// Component for form field with error handling
+interface FormFieldProps {
+  label: string
+  required?: boolean
+  error?: string
+  children: React.ReactNode
+  description?: string
+  icon?: React.ReactNode
+}
+
+const FormField = ({
+  label,
+  required,
+  error,
+  children,
+  description,
+  icon,
+}: FormFieldProps) => (
+  <div className='space-y-2'>
+    <Label className='flex items-center gap-2 text-sm font-medium'>
+      {icon && <span className='text-muted-foreground'>{icon}</span>}
+      {label}
+      {required && <span className='text-red-500'>*</span>}
+    </Label>
+    {children}
+    {error && (
+      <div className='flex items-center gap-1 text-sm text-red-600'>
+        <AlertCircle className='h-4 w-4' />
+        {error}
+      </div>
+    )}
+    {description && !error && (
+      <p className='text-xs text-muted-foreground'>{description}</p>
+    )}
+  </div>
+)
+
+// Component for vital sign field
+interface VitalSignFieldProps {
+  label: string
+  unit: string
+  icon?: React.ReactNode
+  placeholder: string
+  register: Record<string, unknown>
+  error?: string
+  type?: string
+  step?: string
+}
+
+const VitalSignField = ({
+  label,
+  unit,
+  icon,
+  placeholder,
+  register,
+  error,
+  type = 'number',
+  step,
+}: VitalSignFieldProps) => (
+  <FormField
+    label={label}
+    icon={icon}
+    error={error}
+    description={`Unidad: ${unit} | Rango: ${placeholder}`}
+  >
+    <Input
+      type={type}
+      placeholder={placeholder}
+      step={step}
+      {...register}
+      className={error ? 'border-red-500 focus:border-red-500' : ''}
+    />
+  </FormField>
+)
+
 export function MedicalRecordForm({
   open,
   onOpenChange,
@@ -94,6 +263,7 @@ export function MedicalRecordForm({
   const { user } = useAuthStore()
   const isDoctor = user?.roles.includes(UserRole.DOCTOR)
   const [activeTab, setActiveTab] = useState('basic')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const createMutation = useCreateMedicalRecord()
   const updateMutation = useUpdateMedicalRecord()
@@ -101,9 +271,10 @@ export function MedicalRecordForm({
   const isEditMode = Boolean(record)
   const isLoading = createMutation.isPending || updateMutation.isPending
 
-  // Form setup
+  // Form setup with better default values
   const form = useForm<MedicalRecordFormData>({
     resolver: zodResolver(createMedicalRecordSchema(isEditMode)),
+    mode: 'onChange', // Validate on change for better UX
     defaultValues: {
       patientProfileId: patientId || '',
       date: new Date().toISOString().split('T')[0],
@@ -116,17 +287,17 @@ export function MedicalRecordForm({
       followUpDate: '',
       allergiesText: '',
       bloodPressure: '',
-      heartRate: undefined,
-      temperature: undefined,
-      weight: undefined,
-      height: undefined,
-      oxygenSaturation: undefined,
-      respiratoryRate: undefined,
+      heartRate: '',
+      temperature: '',
+      weight: '',
+      height: '',
+      oxygenSaturation: '',
+      respiratoryRate: '',
       vitalSignsNotes: '',
     },
   })
 
-  // Load data for edit mode
+  // Enhanced data loading for edit mode
   useEffect(() => {
     if (record && open) {
       const symptomsText = Array.isArray(record.symptoms)
@@ -146,20 +317,22 @@ export function MedicalRecordForm({
         diagnosis: record.diagnosis,
         treatment: record.treatment || '',
         notes: record.notes || '',
-        followUpDate: record.followUpDate
-          ? record.followUpDate.split('T')[0]
-          : '',
+        followUpDate:
+          record.followUpDate && record.followUpDate !== 'null'
+            ? record.followUpDate.split('T')[0]
+            : '',
         allergiesText: allergiesText,
         bloodPressure: record.vitalSigns?.bloodPressure || '',
-        heartRate: record.vitalSigns?.heartRate || undefined,
-        temperature: record.vitalSigns?.temperature || undefined,
-        weight: record.vitalSigns?.weight || undefined,
-        height: record.vitalSigns?.height || undefined,
-        oxygenSaturation: record.vitalSigns?.oxygenSaturation || undefined,
-        respiratoryRate: record.vitalSigns?.respiratoryRate || undefined,
+        heartRate: record.vitalSigns?.heartRate?.toString() || '',
+        temperature: record.vitalSigns?.temperature?.toString() || '',
+        weight: record.vitalSigns?.weight?.toString() || '',
+        height: record.vitalSigns?.height?.toString() || '',
+        oxygenSaturation: record.vitalSigns?.oxygenSaturation?.toString() || '',
+        respiratoryRate: record.vitalSigns?.respiratoryRate?.toString() || '',
         vitalSignsNotes: record.vitalSigns?.notes || '',
       })
     } else if (!record && open) {
+      // Reset form for new record
       form.reset({
         patientProfileId: patientId || '',
         date: new Date().toISOString().split('T')[0],
@@ -172,171 +345,303 @@ export function MedicalRecordForm({
         followUpDate: '',
         allergiesText: '',
         bloodPressure: '',
-        heartRate: undefined,
-        temperature: undefined,
-        weight: undefined,
-        height: undefined,
-        oxygenSaturation: undefined,
-        respiratoryRate: undefined,
+        heartRate: '',
+        temperature: '',
+        weight: '',
+        height: '',
+        oxygenSaturation: '',
+        respiratoryRate: '',
         vitalSignsNotes: '',
       })
     }
   }, [record, open, patientId, form])
 
-  const onSubmit = async (data: MedicalRecordFormData) => {
-    console.log('🚀 [MedicalRecordForm] onSubmit called with data:', data)
-    console.log('🚀 [MedicalRecordForm] Form state:', {
-      isValid: form.formState.isValid,
-      errors: form.formState.errors,
-      isEditMode,
-      recordId: record?.id,
-    })
+  // Enhanced form submission with better error handling
+  const onSubmit = useCallback(
+    async (data: MedicalRecordFormData) => {
+      if (isSubmitting) return
 
-    // Verificar si hay errores de validación
-    if (!form.formState.isValid) {
-      console.error(
-        '❌ [MedicalRecordForm] Form has validation errors:',
-        form.formState.errors
-      )
-      return
-    }
+      try {
+        setIsSubmitting(true)
 
-    try {
-      if (!isDoctor) {
-        console.error(
-          '❌ [MedicalRecordForm] Solo los doctores pueden crear/editar registros médicos'
-        )
-        return
-      }
+        if (!isDoctor) {
+          toast.error('Solo los doctores pueden crear/editar registros médicos')
+          return
+        }
+        if (!user?.id) {
+          toast.error('Usuario no autenticado')
+          return
+        }
 
-      if (!user?.id) {
-        console.error('❌ [MedicalRecordForm] Usuario no autenticado')
-        return
-      }
+        // Validate form before submission
+        const isValid = await form.trigger()
+        if (!isValid) {
+          toast.error('Por favor, corrige los errores en el formulario')
+          return
+        }
 
-      console.log('✅ [MedicalRecordForm] User is doctor and authenticated:', {
-        userId: user.id,
-        isEditMode,
-      })
+        // Convert form data to DTO format
+        const symptoms = data.symptoms
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
 
-      // Convert form data to DTO format
-      const symptoms = data.symptoms
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      const allergies = data.allergiesText
-        ? data.allergiesText
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
+        const allergies = data.allergiesText
+          ? data.allergiesText
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : []
 
-      const vitalSigns =
-        data.bloodPressure ||
-        data.heartRate ||
-        data.temperature ||
-        data.weight ||
-        data.height ||
-        data.oxygenSaturation ||
-        data.respiratoryRate ||
-        data.vitalSignsNotes
-          ? {
-              bloodPressure: data.bloodPressure || undefined,
-              heartRate: data.heartRate || undefined,
-              temperature: data.temperature || undefined,
-              weight: data.weight || undefined,
-              height: data.height || undefined,
-              oxygenSaturation: data.oxygenSaturation || undefined,
-              respiratoryRate: data.respiratoryRate || undefined,
-              notes: data.vitalSignsNotes || undefined,
+        // Helper function to clean vital signs values
+        const cleanVitalSignValue = (
+          value: number | string | undefined
+        ): number | undefined => {
+          if (
+            value === undefined ||
+            value === null ||
+            value === '' ||
+            value === 0 ||
+            (typeof value === 'number' && isNaN(value))
+          ) {
+            return undefined
+          }
+          // Convert string to number if needed
+          const numValue = typeof value === 'string' ? parseFloat(value) : value
+          return isNaN(numValue) ? undefined : numValue
+        }
+
+        const vitalSigns =
+          data.bloodPressure ||
+          cleanVitalSignValue(data.heartRate) ||
+          cleanVitalSignValue(data.temperature) ||
+          cleanVitalSignValue(data.weight) ||
+          cleanVitalSignValue(data.height) ||
+          cleanVitalSignValue(data.oxygenSaturation) ||
+          cleanVitalSignValue(data.respiratoryRate) ||
+          data.vitalSignsNotes
+            ? {
+                bloodPressure: data.bloodPressure || undefined,
+                heartRate: cleanVitalSignValue(data.heartRate),
+                temperature: cleanVitalSignValue(data.temperature),
+                weight: cleanVitalSignValue(data.weight),
+                height: cleanVitalSignValue(data.height),
+                oxygenSaturation: cleanVitalSignValue(data.oxygenSaturation),
+                respiratoryRate: cleanVitalSignValue(data.respiratoryRate),
+                notes: data.vitalSignsNotes || undefined,
+              }
+            : undefined
+
+        if (isEditMode && record) {
+          const updateData: UpdateMedicalRecordDto = {
+            category: data.category,
+            priority: data.priority,
+            symptoms,
+            diagnosis: data.diagnosis,
+            treatment: data.treatment,
+            notes: data.notes,
+            allergies,
+            followUpDate: data.followUpDate || undefined,
+            vitalSigns,
+          }
+
+          await updateMutation.mutateAsync({
+            id: record.id,
+            data: updateData,
+          })
+          toast.success('Registro médico actualizado correctamente')
+        } else {
+          const createData: CreateMedicalRecordDto = {
+            patientProfileId: data.patientProfileId!,
+            doctorId: user.id,
+            category: data.category,
+            priority: data.priority,
+            symptoms,
+            diagnosis: data.diagnosis,
+            treatment: data.treatment,
+            notes: data.notes,
+            allergies,
+            followUpDate: data.followUpDate || undefined,
+            vitalSigns,
+          }
+
+          await createMutation.mutateAsync(createData)
+          toast.success('Registro médico creado correctamente')
+        }
+
+        onOpenChange(false)
+        form.reset()
+        onSuccess?.()
+      } catch (error) {
+        console.error('Error submitting medical record:', error)
+
+        // Handle specific validation errors from backend
+        if (error instanceof Error) {
+          const errorMessage = error.message
+
+          // Check for specific vital signs errors
+          if (errorMessage.includes('saturación')) {
+            toast.error(
+              'Error en saturación de oxígeno: Debe ser entre 70% y 100%'
+            )
+          } else if (errorMessage.includes('frecuencia cardíaca')) {
+            toast.error(
+              'Error en frecuencia cardíaca: Debe ser entre 30 y 250 bpm'
+            )
+          } else if (errorMessage.includes('temperatura')) {
+            toast.error('Error en temperatura: Debe ser entre 30°C y 45°C')
+          } else if (errorMessage.includes('peso')) {
+            toast.error('Error en peso: Debe ser entre 5 y 330 lbs')
+          } else if (errorMessage.includes('altura')) {
+            toast.error('Error en altura: Debe ser entre 20 y 80 pulgadas')
+          } else if (errorMessage.includes('frecuencia respiratoria')) {
+            toast.error(
+              'Error en frecuencia respiratoria: Debe ser entre 8 y 60 rpm'
+            )
+          } else if (errorMessage.includes('vitalSigns')) {
+            // Parse multiple vital signs errors
+            const errors = errorMessage.split(',').map((e) => e.trim())
+            const vitalSignErrors = errors.filter((e) =>
+              e.includes('vitalSigns.')
+            )
+
+            if (vitalSignErrors.length > 0) {
+              const errorMessages = vitalSignErrors.map((e) => {
+                if (e.includes('altura')) return 'Altura: entre 20-80 pulgadas'
+                if (e.includes('frecuencia respiratoria'))
+                  return 'Frecuencia respiratoria: entre 8-60 rpm'
+                if (e.includes('peso')) return 'Peso: entre 5-330 lbs'
+                if (e.includes('saturación')) return 'Saturación: entre 70-100%'
+                if (e.includes('frecuencia cardíaca'))
+                  return 'Frecuencia cardíaca: entre 30-250 bpm'
+                if (e.includes('temperatura'))
+                  return 'Temperatura: entre 30-45°C'
+                return e.replace('vitalSigns.', '')
+              })
+
+              toast.error(
+                `Errores en signos vitales: ${errorMessages.join(', ')}`
+              )
+            } else {
+              toast.error(errorMessage)
             }
-          : undefined
-
-      if (isEditMode && record) {
-        console.log('🔄 [MedicalRecordForm] Updating existing record:', {
-          recordId: record.id,
-          isEditMode,
-          hasRecord: !!record,
-        })
-
-        const updateData: UpdateMedicalRecordDto = {
-          category: data.category,
-          priority: data.priority,
-          symptoms,
-          diagnosis: data.diagnosis,
-          treatment: data.treatment,
-          notes: data.notes,
-          allergies,
-          followUpDate: data.followUpDate || undefined,
-          vitalSigns,
+          } else {
+            toast.error(errorMessage)
+          }
+        } else {
+          toast.error('Error al procesar el registro médico')
         }
-
-        console.log('📝 [MedicalRecordForm] Update data prepared:', updateData)
-
-        const result = await updateMutation.mutateAsync({
-          id: record.id,
-          data: updateData,
-        })
-
-        console.log(
-          '✅ [MedicalRecordForm] Record updated successfully:',
-          result
-        )
-      } else {
-        const createData: CreateMedicalRecordDto = {
-          patientProfileId: data.patientProfileId!,
-          doctorId: user.id,
-          category: data.category,
-          priority: data.priority,
-          symptoms,
-          diagnosis: data.diagnosis,
-          treatment: data.treatment,
-          notes: data.notes,
-          allergies,
-          followUpDate: data.followUpDate || undefined,
-          vitalSigns,
-        }
-
-        console.log(
-          '📝 [MedicalRecordForm] Creating new record with data:',
-          createData
-        )
-
-        const result = await createMutation.mutateAsync(createData)
-
-        console.log(
-          '✅ [MedicalRecordForm] Record created successfully:',
-          result
-        )
+      } finally {
+        setIsSubmitting(false)
       }
+    },
+    [
+      isSubmitting,
+      isDoctor,
+      user?.id,
+      form,
+      isEditMode,
+      record,
+      updateMutation,
+      createMutation,
+      onOpenChange,
+      onSuccess,
+    ]
+  )
 
-      onOpenChange(false)
-      form.reset()
-      onSuccess?.()
-    } catch (error) {
-      console.error(
-        '❌ [MedicalRecordForm] Error al procesar el registro médico:',
-        error
+  const handleCancel = useCallback(() => {
+    if (isSubmitting) return
+
+    const hasChanges = form.formState.isDirty
+    if (hasChanges) {
+      const confirmed = window.confirm(
+        '¿Estás seguro de que quieres cancelar? Se perderán los cambios no guardados.'
       )
-
-      // Show user-friendly error message
-      if (error instanceof Error) {
-        console.error('❌ Error details:', error.message)
-      }
+      if (!confirmed) return
     }
-  }
 
-  const handleCancel = () => {
     onOpenChange(false)
     form.reset()
-  }
+  }, [isSubmitting, form, onOpenChange])
+
+  // Check if form has required fields filled
+  const watchedValues = form.watch()
+
+  // Check required fields based on mode
+  const hasRequiredFields = (() => {
+    const hasSymptoms =
+      watchedValues.symptoms && watchedValues.symptoms.length >= 10
+    const hasDiagnosis =
+      watchedValues.diagnosis && watchedValues.diagnosis.length >= 10
+
+    if (isEditMode) {
+      return hasSymptoms && hasDiagnosis
+    } else {
+      const hasPatient =
+        watchedValues.patientProfileId &&
+        watchedValues.patientProfileId.trim() !== ''
+      const hasDate = watchedValues.date && watchedValues.date.trim() !== ''
+      return hasPatient && hasSymptoms && hasDiagnosis && hasDate
+    }
+  })()
+
+  const isFormValid = form.formState.isValid && hasRequiredFields
+
+  // Trigger validation when required fields change
+  useEffect(() => {
+    const fieldsToValidate = isEditMode
+      ? (['symptoms', 'diagnosis'] as const)
+      : (['patientProfileId', 'symptoms', 'diagnosis', 'date'] as const)
+
+    form.trigger(fieldsToValidate)
+  }, [
+    watchedValues.symptoms,
+    watchedValues.diagnosis,
+    watchedValues.patientProfileId,
+    watchedValues.date,
+    isEditMode,
+  ])
+
+  // Trigger validation for vital signs when they change
+  useEffect(() => {
+    const vitalSignsFields = [
+      'bloodPressure',
+      'heartRate',
+      'temperature',
+      'weight',
+      'height',
+      'oxygenSaturation',
+      'respiratoryRate',
+    ] as const
+
+    // Only validate if the field has a value
+    const fieldsWithValues = vitalSignsFields.filter(
+      (field) =>
+        watchedValues[field] !== undefined && watchedValues[field] !== ''
+    )
+
+    if (fieldsWithValues.length > 0) {
+      form.trigger(fieldsWithValues)
+    }
+  }, [
+    watchedValues.bloodPressure,
+    watchedValues.heartRate,
+    watchedValues.temperature,
+    watchedValues.weight,
+    watchedValues.height,
+    watchedValues.oxygenSaturation,
+    watchedValues.respiratoryRate,
+  ])
 
   if (!isDoctor) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Acceso Denegado</DialogTitle>
+            <DialogTitle className='flex items-center gap-2'>
+              <AlertCircle className='h-5 w-5 text-red-500' />
+              Acceso Denegado
+            </DialogTitle>
             <DialogDescription>
               Solo los doctores pueden crear y editar registros médicos.
             </DialogDescription>
@@ -351,17 +656,17 @@ export function MedicalRecordForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='max-w-7xl max-h-[95vh] overflow-y-auto'>
         <DialogHeader>
-          <DialogTitle className='flex items-center'>
-            <FileText className='mr-2 h-5 w-5' />
+          <DialogTitle className='flex items-center gap-2'>
+            <FileText className='h-5 w-5' />
             {isEditMode
               ? 'Editar Registro Médico'
               : 'Crear Nuevo Registro Médico'}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? 'Modifica la información del registro médico'
+              ? 'Modifica la información del registro médico del paciente'
               : 'Completa la información para crear un nuevo registro médico'}
           </DialogDescription>
         </DialogHeader>
@@ -371,46 +676,100 @@ export function MedicalRecordForm({
         ) : (
           <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              {/* Form Progress Indicator */}
+              {/* <div className='flex items-center justify-between p-4 bg-muted/50 rounded-lg'>
+                <div className='flex items-center gap-2'>
+                  {isFormValid ? (
+                    <CheckCircle2 className='h-4 w-4 text-green-500' />
+                  ) : (
+                    <AlertCircle className='h-4 w-4 text-orange-500' />
+                  )}
+                  <span className='text-sm font-medium'>
+                    {isFormValid
+                      ? 'Formulario completo - Puedes guardar el registro'
+                      : `Completa los campos requeridos: ${
+                          !watchedValues.patientProfileId && !isEditMode
+                            ? 'Paciente, '
+                            : ''
+                        }${
+                          !watchedValues.symptoms ||
+                          watchedValues.symptoms.length < 10
+                            ? 'Síntomas (mín. 10 chars), '
+                            : ''
+                        }${
+                          !watchedValues.diagnosis ||
+                          watchedValues.diagnosis.length < 10
+                            ? 'Diagnóstico (mín. 10 chars)'
+                            : ''
+                        }`.replace(/,\s*$/, '')}
+                  </span>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Badge variant={isFormValid ? 'default' : 'secondary'}>
+                    {Object.keys(form.formState.errors).length} errores
+                  </Badge>
+                  {!isFormValid && (
+                    <Badge variant='outline' className='text-xs'>
+                      {isEditMode ? 'Edición' : 'Creación'}
+                    </Badge>
+                  )}
+                </div>
+              </div> */}
+
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className='grid w-full grid-cols-4'>
-                  <TabsTrigger value='basic' className='flex items-center'>
-                    <FileText className='mr-1 h-4 w-4' />
+                  <TabsTrigger
+                    value='basic'
+                    className='flex items-center gap-2'
+                  >
                     <span className='hidden sm:inline'>Información Básica</span>
                     <span className='sm:hidden'>Básica</span>
                   </TabsTrigger>
-                  <TabsTrigger value='vitals' className='flex items-center'>
-                    <Activity className='mr-1 h-4 w-4' />
+                  <TabsTrigger
+                    value='vitals'
+                    className='flex items-center gap-2'
+                  >
                     <span className='hidden sm:inline'>Signos Vitales</span>
                     <span className='sm:hidden'>Vitales</span>
                   </TabsTrigger>
-                  <TabsTrigger value='treatment' className='flex items-center'>
-                    <Stethoscope className='mr-1 h-4 w-4' />
+                  <TabsTrigger
+                    value='treatment'
+                    className='flex items-center gap-2'
+                  >
                     <span className='hidden sm:inline'>Tratamiento</span>
                     <span className='sm:hidden'>Tratamiento</span>
                   </TabsTrigger>
-                  <TabsTrigger value='followup' className='flex items-center'>
-                    <Clock className='mr-1 h-4 w-4' />
+                  <TabsTrigger
+                    value='followup'
+                    className='flex items-center gap-2'
+                  >
                     <span className='hidden sm:inline'>Seguimiento</span>
                     <span className='sm:hidden'>Seguimiento</span>
                   </TabsTrigger>
                 </TabsList>
 
                 {/* Basic Information Tab */}
-                <TabsContent value='basic' className='space-y-4'>
+                <TabsContent value='basic' className='space-y-6'>
+                  {/* Patient Information Card */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className='text-lg'>
+                      <CardTitle className='flex items-center gap-2'>
+                        <User className='h-5 w-5' />
                         Información del Paciente
                       </CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-4'>
-                      {/* Selector de paciente - Mostrar siempre pero con diferentes comportamientos */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Paciente *
-                        </label>
+                      <FormField
+                        label='Paciente'
+                        required={!isEditMode}
+                        error={form.formState.errors.patientProfileId?.message}
+                        description={
+                          isEditMode
+                            ? 'Información del paciente asociado a este registro médico.'
+                            : 'Busca por nombre o email del paciente para seleccionar.'
+                        }
+                      >
                         {isEditMode ? (
-                          // En modo de edición: mostrar paciente como solo lectura y agregar campo hidden
                           <>
                             <PatientDisplay
                               patientId={record?.patientProfileId || ''}
@@ -423,419 +782,350 @@ export function MedicalRecordForm({
                             />
                           </>
                         ) : (
-                          // En modo de creación: permitir seleccionar paciente
                           <PatientSelector
                             value={form.watch('patientProfileId') || ''}
                             onValueChange={(value) => {
-                              console.log(
-                                '🔄 [MedicalRecordForm] Patient selected:',
-                                value
-                              )
-                              console.log(
-                                '🔄 [MedicalRecordForm] Current form value before set:',
-                                form.watch('patientProfileId')
-                              )
                               form.setValue('patientProfileId', value)
                               form.clearErrors('patientProfileId')
-                              console.log(
-                                '🔄 [MedicalRecordForm] Current form value after set:',
-                                form.watch('patientProfileId')
-                              )
-                              // Triggear validación para asegurar que el valor se actualice
                               form.trigger('patientProfileId')
                             }}
                             placeholder='Buscar y seleccionar paciente...'
                             disabled={isLoading}
                           />
                         )}
-                        {form.formState.errors.patientProfileId && (
-                          <p className='text-sm text-red-600'>
-                            {form.formState.errors.patientProfileId.message}
-                          </p>
-                        )}
-                        <p className='text-xs text-muted-foreground'>
-                          {isEditMode
-                            ? 'Información del paciente asociado a este registro médico.'
-                            : 'Busca por nombre o email del paciente para seleccionar.'}
-                        </p>
-                      </div>
+                      </FormField>
                     </CardContent>
                   </Card>
 
+                  {/* General Information Card */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className='text-lg'>
+                      <CardTitle className='flex items-center gap-2'>
+                        <Info className='h-5 w-5' />
                         Información General
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className='space-y-4'>
-                      <div className='grid gap-4 md:grid-cols-2'>
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Fecha de Consulta *
-                          </label>
-                          <Input type='date' {...form.register('date')} />
-                          {form.formState.errors.date && (
-                            <p className='text-sm text-red-600'>
-                              {form.formState.errors.date.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Categoría
-                          </label>
-                          <Select
-                            value={form.watch('category') || ''}
-                            onValueChange={(value) =>
-                              form.setValue(
-                                'category',
-                                value as MedicalRecordCategory
-                              )
+                    <CardContent className='space-y-6'>
+                      <div className='space-y-4'>
+                        <FormField
+                          label='Fecha de Consulta'
+                          required
+                          icon={<Calendar className='h-4 w-4' />}
+                          error={form.formState.errors.date?.message}
+                        >
+                          <Input
+                            type='date'
+                            {...form.register('date')}
+                            className={
+                              form.formState.errors.date ? 'border-red-500' : ''
                             }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder='Selecciona una categoría' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.values(MedicalRecordCategory).map(
-                                (category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {getCategoryText(category)}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                          />
+                        </FormField>
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Prioridad
-                          </label>
-                          <Select
-                            value={form.watch('priority') || ''}
-                            onValueChange={(value) =>
-                              form.setValue('priority', value as Priority)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder='Selecciona una prioridad' />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.values(Priority).map((priority) => (
-                                <SelectItem key={priority} value={priority}>
-                                  {getPriorityText(priority)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <FormField
+                          label='Categoría'
+                          icon={<FileText className='h-4 w-4' />}
+                          error={form.formState.errors.category?.message}
+                        >
+                          <Controller
+                            name='category'
+                            control={form.control}
+                            render={({ field }) => (
+                              <Select
+                                value={field.value || ''}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Selecciona una categoría' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.values(MedicalRecordCategory).map(
+                                    (category) => (
+                                      <SelectItem
+                                        key={category}
+                                        value={category}
+                                      >
+                                        {getCategoryText(category)}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </FormField>
+
+                        <FormField
+                          label='Prioridad'
+                          icon={<AlertCircle className='h-4 w-4' />}
+                          error={form.formState.errors.priority?.message}
+                        >
+                          <Controller
+                            name='priority'
+                            control={form.control}
+                            render={({ field }) => (
+                              <Select
+                                value={field.value || ''}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder='Selecciona una prioridad' />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.values(Priority).map((priority) => (
+                                    <SelectItem key={priority} value={priority}>
+                                      {getPriorityText(priority)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </FormField>
                       </div>
 
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Síntomas *
-                        </label>
+                      <Separator />
+
+                      <FormField
+                        label='Síntomas'
+                        required
+                        error={form.formState.errors.symptoms?.message}
+                        description='Describe todos los síntomas relevantes que presenta el paciente'
+                      >
                         <Textarea
                           placeholder='Describe los síntomas presentados por el paciente...'
-                          className='min-h-[100px]'
+                          className={`min-h-[120px] ${
+                            form.formState.errors.symptoms
+                              ? 'border-red-500'
+                              : ''
+                          }`}
                           {...form.register('symptoms')}
                         />
-                        <p className='text-xs text-muted-foreground'>
-                          Describe todos los síntomas relevantes que presenta el
-                          paciente
-                        </p>
-                        {form.formState.errors.symptoms && (
-                          <p className='text-sm text-red-600'>
-                            {form.formState.errors.symptoms.message}
-                          </p>
-                        )}
-                      </div>
+                      </FormField>
 
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Diagnóstico *
-                        </label>
+                      <FormField
+                        label='Diagnóstico'
+                        required
+                        error={form.formState.errors.diagnosis?.message}
+                        description='Diagnóstico médico basado en la evaluación realizada'
+                      >
                         <Textarea
                           placeholder='Diagnóstico médico basado en los síntomas y exámenes...'
-                          className='min-h-[100px]'
+                          className={`min-h-[120px] ${
+                            form.formState.errors.diagnosis
+                              ? 'border-red-500'
+                              : ''
+                          }`}
                           {...form.register('diagnosis')}
                         />
-                        <p className='text-xs text-muted-foreground'>
-                          Diagnóstico médico basado en la evaluación realizada
-                        </p>
-                        {form.formState.errors.diagnosis && (
-                          <p className='text-sm text-red-600'>
-                            {form.formState.errors.diagnosis.message}
-                          </p>
-                        )}
-                      </div>
+                      </FormField>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
                 {/* Vital Signs Tab */}
-                <TabsContent value='vitals' className='space-y-4'>
+                <TabsContent value='vitals' className='space-y-6'>
                   <Card>
                     <CardHeader>
-                      <CardTitle className='text-lg flex items-center'>
-                        <Activity className='mr-2 h-5 w-5' />
+                      <CardTitle className='flex items-center gap-2'>
+                        <Activity className='h-5 w-5' />
                         Signos Vitales
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className='space-y-4'>
-                      <div className='grid gap-4 md:grid-cols-3'>
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Presión Arterial
-                          </label>
-                          <Input
-                            placeholder='ej. 120/80'
-                            {...form.register('bloodPressure')}
-                          />
-                          <p className='text-xs text-muted-foreground'>mmHg</p>
-                        </div>
+                    <CardContent className='space-y-6'>
+                      {/* Signos Vitales Principales */}
+                      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+                        <VitalSignField
+                          label='Presión Arterial'
+                          unit='mmHg'
+                          placeholder='120/80'
+                          register={form.register('bloodPressure')}
+                          error={form.formState.errors.bloodPressure?.message}
+                          type='text'
+                        />
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Frecuencia Cardíaca
-                          </label>
-                          <Input
-                            type='number'
-                            placeholder='ej. 72'
-                            {...form.register('heartRate', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>bpm</p>
-                        </div>
+                        <VitalSignField
+                          label='Frecuencia Cardíaca'
+                          unit='bpm'
+                          icon={<Heart className='h-4 w-4' />}
+                          placeholder='30-250'
+                          register={form.register('heartRate')}
+                          error={form.formState.errors.heartRate?.message}
+                        />
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Frecuencia Respiratoria
-                          </label>
-                          <Input
-                            type='number'
-                            placeholder='ej. 18'
-                            {...form.register('respiratoryRate', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>rpm</p>
-                        </div>
+                        <VitalSignField
+                          label='Temperatura'
+                          unit='°C'
+                          icon={<Thermometer className='h-4 w-4' />}
+                          placeholder='30-45'
+                          register={form.register('temperature')}
+                          error={form.formState.errors.temperature?.message}
+                          step='0.1'
+                        />
+                      </div>
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Temperatura
-                          </label>
-                          <Input
-                            type='number'
-                            step='0.1'
-                            placeholder='ej. 36.5'
-                            {...form.register('temperature', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>°C</p>
-                        </div>
+                      {/* Signos Vitales Secundarios */}
+                      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+                        <VitalSignField
+                          label='Frecuencia Respiratoria'
+                          unit='rpm'
+                          icon={<Wind className='h-4 w-4' />}
+                          placeholder='8-60'
+                          register={form.register('respiratoryRate')}
+                          error={form.formState.errors.respiratoryRate?.message}
+                        />
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>
-                            Saturación de Oxígeno
-                          </label>
-                          <Input
-                            type='number'
-                            placeholder='ej. 98'
-                            {...form.register('oxygenSaturation', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>%</p>
-                        </div>
+                        <VitalSignField
+                          label='Saturación de Oxígeno'
+                          unit='%'
+                          icon={<Activity className='h-4 w-4' />}
+                          placeholder='70-100'
+                          register={form.register('oxygenSaturation')}
+                          error={
+                            form.formState.errors.oxygenSaturation?.message
+                          }
+                        />
                       </div>
 
                       <Separator />
 
+                      {/* Medidas Corporales */}
                       <div className='grid gap-4 md:grid-cols-2'>
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>Peso</label>
-                          <Input
-                            type='number'
-                            step='0.1'
-                            placeholder='ej. 70.5'
-                            {...form.register('weight', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>kg</p>
-                        </div>
+                        <VitalSignField
+                          label='Peso'
+                          unit='lbs'
+                          icon={<Weight className='h-4 w-4' />}
+                          placeholder='5-330'
+                          register={form.register('weight')}
+                          error={form.formState.errors.weight?.message}
+                          step='0.1'
+                        />
 
-                        <div className='space-y-2'>
-                          <label className='text-sm font-medium'>Altura</label>
-                          <Input
-                            type='number'
-                            placeholder='ej. 175'
-                            {...form.register('height', {
-                              valueAsNumber: true,
-                            })}
-                          />
-                          <p className='text-xs text-muted-foreground'>cm</p>
-                        </div>
+                        <VitalSignField
+                          label='Altura'
+                          unit='pulgadas'
+                          icon={<Ruler className='h-4 w-4' />}
+                          placeholder='20-80'
+                          register={form.register('height')}
+                          error={form.formState.errors.height?.message}
+                        />
                       </div>
 
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Notas sobre Signos Vitales
-                        </label>
+                      <FormField
+                        label='Notas sobre Signos Vitales'
+                        error={form.formState.errors.vitalSignsNotes?.message}
+                        description='Observaciones adicionales sobre los signos vitales'
+                      >
                         <Textarea
                           placeholder='Observaciones adicionales sobre los signos vitales...'
                           {...form.register('vitalSignsNotes')}
                         />
-                      </div>
+                      </FormField>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
                 {/* Treatment Tab */}
-                <TabsContent value='treatment' className='space-y-4'>
+                <TabsContent value='treatment' className='space-y-6'>
                   <Card>
                     <CardHeader>
-                      <CardTitle className='text-lg flex items-center'>
-                        <Stethoscope className='mr-2 h-5 w-5' />
-                        Tratamiento
+                      <CardTitle className='flex items-center gap-2'>
+                        <Stethoscope className='h-5 w-5' />
+                        Tratamiento y Notas
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className='space-y-4'>
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Tratamiento
-                        </label>
+                    <CardContent className='space-y-6'>
+                      <FormField
+                        label='Plan de Tratamiento'
+                        error={form.formState.errors.treatment?.message}
+                        description='Incluye procedimientos, terapias y recomendaciones generales'
+                      >
                         <Textarea
                           placeholder='Describe el plan de tratamiento recomendado...'
                           className='min-h-[120px]'
                           {...form.register('treatment')}
                         />
-                        <p className='text-xs text-muted-foreground'>
-                          Incluye procedimientos, terapias y recomendaciones
-                          generales
-                        </p>
-                      </div>
+                      </FormField>
 
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Alergias Conocidas
-                        </label>
+                      <FormField
+                        label='Alergias Conocidas'
+                        error={form.formState.errors.allergiesText?.message}
+                        description='Separa múltiples alergias con comas'
+                      >
                         <Textarea
                           placeholder='ej. Penicilina, Polen, etc. (separar con comas)'
                           {...form.register('allergiesText')}
                         />
-                        <p className='text-xs text-muted-foreground'>
-                          Separa múltiples alergias con comas
-                        </p>
-                      </div>
+                      </FormField>
 
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Notas Adicionales
-                        </label>
+                      <FormField
+                        label='Notas Adicionales'
+                        error={form.formState.errors.notes?.message}
+                        description='Cualquier observación adicional relevante'
+                      >
                         <Textarea
                           placeholder='Cualquier observación adicional relevante...'
                           {...form.register('notes')}
                         />
-                      </div>
+                      </FormField>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
                 {/* Follow-up Tab */}
-                <TabsContent value='followup' className='space-y-4'>
+                <TabsContent value='followup' className='space-y-6'>
                   <Card>
                     <CardHeader>
-                      <CardTitle className='text-lg flex items-center'>
-                        <Clock className='mr-2 h-5 w-5' />
+                      <CardTitle className='flex items-center gap-2'>
+                        <Clock className='h-5 w-5' />
                         Seguimiento
                       </CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-4'>
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium'>
-                          Fecha de Seguimiento
-                        </label>
+                      <FormField
+                        label='Fecha de Seguimiento'
+                        icon={<Calendar className='h-4 w-4' />}
+                        description='Programa una fecha para evaluar la evolución del paciente'
+                      >
                         <Input type='date' {...form.register('followUpDate')} />
-                        <p className='text-xs text-muted-foreground'>
-                          Programa una fecha para evaluar la evolución del
-                          paciente
-                        </p>
-                      </div>
+                      </FormField>
                     </CardContent>
                   </Card>
                 </TabsContent>
               </Tabs>
 
-              <DialogFooter className='flex flex-col sm:flex-row gap-2'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={handleCancel}
-                  disabled={isLoading}
-                >
-                  <X className='mr-2 h-4 w-4' />
-                  Cancelar
-                </Button>
-                <Button
-                  type='submit'
-                  disabled={isLoading}
-                  onClick={(e) => {
-                    console.log(
-                      '🖱️ [MedicalRecordForm] Submit button clicked:',
-                      {
-                        isEditMode,
-                        recordId: record?.id,
-                        isFormValid: form.formState.isValid,
-                        formErrors: form.formState.errors,
-                        patientProfileId: form.watch('patientProfileId'),
-                        buttonType: e.currentTarget.type,
-                        formElement: e.currentTarget.form,
-                      }
-                    )
-
-                    // Force validation check
-                    const isValid = form.trigger()
-                    console.log(
-                      '🔍 [MedicalRecordForm] Manual validation result:',
-                      isValid
-                    )
-                  }}
-                >
-                  <Save className='mr-2 h-4 w-4' />
-                  {isLoading
-                    ? isEditMode
-                      ? 'Actualizando...'
-                      : 'Creando...'
-                    : isEditMode
-                    ? 'Actualizar Registro'
-                    : 'Crear Registro'}
-                </Button>
-              </DialogFooter>
-
-              {/* Debug info for form state */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className='mt-4 p-2 bg-gray-100 text-xs'>
-                  <strong>Form Debug:</strong>
-                  <br />
-                  isValid: {form.formState.isValid ? 'true' : 'false'}
-                  <br />
-                  isEditMode: {isEditMode ? 'true' : 'false'}
-                  <br />
-                  hasRecord: {record ? 'true' : 'false'}
-                  <br />
-                  patientProfileId: {form.watch('patientProfileId') || 'empty'}
-                  <br />
-                  errors: {JSON.stringify(form.formState.errors, null, 2)}
+              {/* Enhanced Footer */}
+              <DialogFooter className='flex flex-col sm:flex-row gap-3 pt-6 border-t'>
+                <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                  <Info className='h-4 w-4' />
+                  <span>Los campos marcados con * son obligatorios</span>
                 </div>
-              )}
+
+                <div className='flex gap-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={handleCancel}
+                    disabled={isLoading || isSubmitting}
+                  >
+                    <X className='mr-2 h-4 w-4' />
+                    Cancelar
+                  </Button>
+                  <Button
+                    type='submit'
+                    disabled={isLoading || isSubmitting || !isFormValid}
+                  >
+                    <Save className='mr-2 h-4 w-4' />
+                    {isSubmitting
+                      ? isEditMode
+                        ? 'Actualizando...'
+                        : 'Creando...'
+                      : isEditMode
+                      ? 'Actualizar Registro'
+                      : 'Crear Registro'}
+                  </Button>
+                </div>
+              </DialogFooter>
             </form>
           </FormProvider>
         )}
