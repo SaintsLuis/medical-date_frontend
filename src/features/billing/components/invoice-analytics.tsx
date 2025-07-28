@@ -425,7 +425,7 @@ export function InvoiceAnalytics() {
                 Ingresos Pendientes:
               </span>
               <span className='font-medium text-yellow-600'>
-                {formatCurrency(stats.invoices.pendingRevenue)}
+                {formatCurrency(stats.invoices.pendingRevenue, 'DOP')}
               </span>
             </div>
             <div className='flex justify-between'>
@@ -433,7 +433,7 @@ export function InvoiceAnalytics() {
                 Ingresos Confirmados:
               </span>
               <span className='font-medium text-green-600'>
-                {formatCurrency(stats.payments.completedAmount)}
+                {formatCurrency(stats.payments.completedAmount, 'DOP')}
               </span>
             </div>
           </CardContent>

@@ -78,14 +78,15 @@ import {
   Invoice,
   InvoiceStatus,
   PaymentMethod,
-  formatCurrency,
-  formatCurrencyFromUSD,
   getStatusColor,
   getStatusText,
   getPaymentMethodText,
   isOverdue,
   getDaysOverdue,
+  formatInvoiceAmount,
+  formatCurrency,
 } from '../types'
+import { CashPaymentDialog } from './CashPaymentDialog'
 
 export function BillingManagement() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -93,11 +94,13 @@ export function BillingManagement() {
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
   const [activeTab, setActiveTab] = useState('invoices')
   const [page, setPage] = useState(1)
-  const [limit] = useState(10)
+  const [limit, setLimit] = useState(10)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isCashDialogOpen, setIsCashDialogOpen] = useState(false)
+  const [pendingInvoice, setPendingInvoice] = useState<Invoice | null>(null)
 
   const { user } = useAuthStore()
   const isDoctor = user?.roles.includes(UserRole.DOCTOR)
@@ -108,12 +111,14 @@ export function BillingManagement() {
     data: adminData,
     isLoading: adminLoading,
     error: adminError,
+    refetch: refetchAdminStats,
   } = useAdminBillingStats(!isDoctor)
 
   const {
     data: doctorData,
     isLoading: doctorLoading,
     error: doctorError,
+    refetch: refetchDoctorStats,
   } = useDoctorBillingStats(isDoctor)
 
   // Invoices data - usar hook diferente según el rol
@@ -151,6 +156,17 @@ export function BillingManagement() {
     ? refetchDoctorInvoices
     : refetchAdminInvoices
 
+  // Debug: ver qué datos tenemos
+  console.log('🔍 BillingManagement Debug:', {
+    isDoctor,
+    invoicesData,
+    meta: invoicesData?.meta,
+    totalPages: invoicesData?.meta?.totalPages,
+    total: invoicesData?.meta?.total,
+    page,
+    limit,
+  })
+
   // Mutations
   const downloadPdf = useDownloadInvoicePdf()
   const deleteInvoice = useDeleteInvoice()
@@ -158,6 +174,7 @@ export function BillingManagement() {
   const stats = isDoctor ? doctorData : adminData
   const isLoading = isDoctor ? doctorLoading : adminLoading
   const error = isDoctor ? doctorError : adminError
+  const refetchStats = isDoctor ? refetchDoctorStats : refetchAdminStats
 
   // Filter invoices based on search and filters
   const filteredInvoices =
@@ -182,6 +199,11 @@ export function BillingManagement() {
         return matchesSearch && matchesStatus && matchesMethod
       }
     ) || []
+
+  // Calcula el pendiente real solo de facturas en efectivo y pendientes
+  const efectivoPendiente = filteredInvoices
+    .filter((inv) => inv.status === 'PENDING' && inv.paymentMethod === 'CASH')
+    .reduce((acc, inv) => acc + Number(inv.amount), 0)
 
   const handleCreateNew = () => {
     setSelectedInvoice(null)
@@ -303,6 +325,8 @@ export function BillingManagement() {
       )
     }
 
+    console.log(' MetricsCards stats:', stats.invoices.totalRevenue)
+
     return (
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
         <Card>
@@ -314,10 +338,15 @@ export function BillingManagement() {
           </CardHeader>
           <CardContent>
             <div className='text-2xl font-bold'>
-              {formatCurrency(stats.invoices.totalRevenue)}
+              {stats?.invoices.totalRevenue
+                ? formatCurrency(stats.invoices.totalRevenue, 'DOP')
+                : 'RD$0.00'}
             </div>
             <p className='text-xs text-muted-foreground'>
-              {formatCurrency(stats.invoices.pendingRevenue)} pendientes
+              {efectivoPendiente
+                ? formatCurrency(efectivoPendiente, 'DOP')
+                : 'RD$0.00'}{' '}
+              pendientes
             </p>
           </CardContent>
         </Card>
@@ -347,7 +376,9 @@ export function BillingManagement() {
           <CardContent>
             <div className='text-2xl font-bold'>{stats.payments.completed}</div>
             <p className='text-xs text-muted-foreground'>
-              {formatCurrency(stats.payments.completedAmount)}
+              {stats?.payments.completedAmount
+                ? formatCurrency(stats.payments.completedAmount, 'DOP')
+                : 'RD$0.00'}
             </p>
           </CardContent>
         </Card>
@@ -469,7 +500,7 @@ export function BillingManagement() {
                     {invoice.appointment && (
                       <div>
                         <div className='font-medium'>
-                          Dr. {invoice.appointment.doctor.firstName}{' '}
+                          {invoice.appointment.doctor.firstName}{' '}
                           {invoice.appointment.doctor.lastName}
                         </div>
                         <div className='text-sm text-muted-foreground'>
@@ -480,7 +511,7 @@ export function BillingManagement() {
                   </TableCell>
                   <TableCell>
                     <div className='font-medium'>
-                      {formatCurrencyFromUSD(invoice.amount)}
+                      {formatInvoiceAmount(invoice)}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -544,6 +575,20 @@ export function BillingManagement() {
                           </Button>
                         </>
                       )}
+                      {invoice.status === 'PENDING' &&
+                        invoice.appointment?.type === 'IN_PERSON' &&
+                        invoice.paymentMethod === 'CASH' && (
+                          <Button
+                            variant='default'
+                            size='sm'
+                            onClick={() => {
+                              setPendingInvoice(invoice)
+                              setIsCashDialogOpen(true)
+                            }}
+                          >
+                            Registrar pago en efectivo
+                          </Button>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -586,7 +631,7 @@ export function BillingManagement() {
                   Monto
                 </label>
                 <div className='text-lg font-semibold mt-1'>
-                  {formatCurrencyFromUSD(selectedInvoice.amount)}
+                  {formatInvoiceAmount(selectedInvoice)}
                 </div>
               </div>
             </div>
@@ -617,7 +662,7 @@ export function BillingManagement() {
                       </label>
                       <div className='mt-1'>
                         <div className='font-medium'>
-                          Dr. {selectedInvoice.appointment.doctor.firstName}{' '}
+                          {selectedInvoice.appointment.doctor.firstName}{' '}
                           {selectedInvoice.appointment.doctor.lastName}
                         </div>
                         <div className='text-sm text-muted-foreground'>
@@ -788,32 +833,81 @@ export function BillingManagement() {
           <InvoicesTable />
 
           {/* Pagination */}
-          {invoicesData?.meta && invoicesData.meta.totalPages > 1 && (
-            <div className='flex items-center justify-between'>
-              <div className='text-sm text-muted-foreground'>
-                Página {page} de {invoicesData.meta.totalPages} (
-                {invoicesData.meta.total} facturas)
+          {(() => {
+            const shouldShowPagination =
+              invoicesData?.meta && invoicesData.meta.totalPages > 1
+            console.log('🔍 Pagination condition:', {
+              hasMeta: !!invoicesData?.meta,
+              totalPages: invoicesData?.meta?.totalPages,
+              shouldShow: shouldShowPagination,
+            })
+            if (!shouldShowPagination) return null
+
+            return (
+              <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-2'>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm text-muted-foreground'>
+                    Mostrando {(page - 1) * limit + 1} -{' '}
+                    {Math.min(page * limit, invoicesData.meta.total)} de{' '}
+                    {invoicesData.meta.total} facturas
+                  </span>
+                  <Select
+                    value={String(limit)}
+                    onValueChange={(v) => {
+                      setLimit(Number(v))
+                      setPage(1)
+                    }}
+                  >
+                    <SelectTrigger className='w-24'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='10'>10 por página</SelectItem>
+                      <SelectItem value='20'>20 por página</SelectItem>
+                      <SelectItem value='50'>50 por página</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >
+                    Primera
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(page - 1)}
+                    disabled={!invoicesData.meta.hasPreviousPage}
+                  >
+                    Anterior
+                  </Button>
+                  <span className='text-sm font-mono px-2'>
+                    &lt; {page} &gt;
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(page + 1)}
+                    disabled={!invoicesData.meta.hasNextPage}
+                  >
+                    Siguiente
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(invoicesData.meta.totalPages)}
+                    disabled={page === invoicesData.meta.totalPages}
+                  >
+                    Última
+                  </Button>
+                </div>
               </div>
-              <div className='space-x-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setPage(page - 1)}
-                  disabled={!invoicesData.meta.hasPreviousPage}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setPage(page + 1)}
-                  disabled={!invoicesData.meta.hasNextPage}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </TabsContent>
 
         <TabsContent value='analytics'>
@@ -869,6 +963,20 @@ export function BillingManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de confirmación y feedback */}
+      <CashPaymentDialog
+        open={isCashDialogOpen}
+        onOpenChange={(open) => {
+          setIsCashDialogOpen(open)
+          if (!open) setPendingInvoice(null)
+        }}
+        invoice={pendingInvoice}
+        onSuccess={() => {
+          refetchInvoices()
+          refetchStats()
+        }}
+      />
     </div>
   )
 }

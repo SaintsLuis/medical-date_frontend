@@ -131,17 +131,30 @@ export function appointmentToCalendarEvent(
   doctor?: Doctor
 ): CalendarEvent {
   const startDate = new Date(appointment.date)
-  const endDate = addDays(startDate, appointment.duration)
+  // Corregir: duration está en minutos, no en días
+  const endDate = new Date(
+    startDate.getTime() + appointment.duration * 60 * 1000
+  )
 
   const patientName = appointment.patient
     ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
     : `Paciente #${appointment.patientId.slice(-6)}`
 
   const doctorName = doctor
-    ? `Dr. ${doctor.firstName} ${doctor.lastName}`
+    ? ` ${doctor.firstName} ${doctor.lastName}`
     : appointment.doctor
-    ? `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`
+    ? ` ${appointment.doctor.firstName} ${appointment.doctor.lastName}`
     : `Doctor #${appointment.doctorId.slice(-6)}`
+
+  console.log('🔍 Calendar Event Conversion:', {
+    appointmentId: appointment.id,
+    originalDate: appointment.date,
+    startDate: startDate.toISOString(),
+    duration: appointment.duration,
+    endDate: endDate.toISOString(),
+    patientName,
+    doctorName,
+  })
 
   return {
     id: appointment.id,
@@ -292,7 +305,8 @@ export function generateTimeSlots(
   let currentSlot = startTime
 
   while (isBefore(currentSlot, endTime)) {
-    const nextSlot = addDays(currentSlot, slotDuration)
+    // Corregir: slotDuration está en minutos, no en días
+    const nextSlot = new Date(currentSlot.getTime() + slotDuration * 60 * 1000)
 
     slots.push({
       start: new Date(currentSlot),
@@ -334,8 +348,7 @@ export function roundToNearestSlot(
 
 export function checkAppointmentConflicts(
   newAppointment: Partial<Appointment>,
-  existingAppointments: Appointment[],
-  doctors: Doctor[] = []
+  existingAppointments: Appointment[]
 ): AppointmentConflict[] {
   const conflicts: AppointmentConflict[] = []
 
@@ -348,7 +361,10 @@ export function checkAppointmentConflicts(
   }
 
   const newStart = new Date(newAppointment.date)
-  const newEnd = addDays(newStart, newAppointment.duration)
+  // Corregir: duration está en minutos, no en días
+  const newEnd = new Date(
+    newStart.getTime() + newAppointment.duration * 60 * 1000
+  )
 
   // Verificar conflictos de tiempo con el mismo doctor
   existingAppointments.forEach((existing) => {
@@ -357,7 +373,10 @@ export function checkAppointmentConflicts(
     if (existing.id === newAppointment.id) return // Si es una actualización
 
     const existingStart = new Date(existing.date)
-    const existingEnd = addDays(existingStart, existing.duration)
+    // Corregir: duration está en minutos, no en días
+    const existingEnd = new Date(
+      existingStart.getTime() + existing.duration * 60 * 1000
+    )
 
     // Verificar solapamiento
     if (
@@ -435,7 +454,8 @@ export function findAvailableSlots(
     // Verificar que no haya conflictos
     return !doctorAppointments.some((apt) => {
       const aptStart = new Date(apt.date)
-      const aptEnd = addDays(aptStart, apt.duration)
+      // Corregir: duration está en minutos, no en días
+      const aptEnd = new Date(aptStart.getTime() + apt.duration * 60 * 1000)
 
       return isBefore(slot.start, aptEnd) && isAfter(slot.end, aptStart)
     })
@@ -723,7 +743,8 @@ export function validateAppointmentTime(
     } else {
       const startTime = parse(availability.startTime, 'HH:mm', start)
       const endTime = parse(availability.endTime, 'HH:mm', start)
-      const appointmentEnd = addDays(start, duration)
+      // Corregir: duration está en minutos, no en días
+      const appointmentEnd = new Date(start.getTime() + duration * 60 * 1000)
 
       if (isBefore(start, startTime) || isAfter(appointmentEnd, endTime)) {
         errors.push('La cita está fuera del horario disponible del doctor')
@@ -762,7 +783,7 @@ export function exportCalendarData(
         formatCalendarDate(new Date(apt.date), 'dd/MM/yyyy'),
         formatCalendarTime(new Date(apt.date)),
         apt.patient ? `${apt.patient.firstName} ${apt.patient.lastName}` : '',
-        apt.doctor ? `Dr. ${apt.doctor.firstName} ${apt.doctor.lastName}` : '',
+        apt.doctor ? `${apt.doctor.firstName} ${apt.doctor.lastName}` : '',
         apt.type,
         apt.status,
         formatAppointmentDuration(apt.duration),

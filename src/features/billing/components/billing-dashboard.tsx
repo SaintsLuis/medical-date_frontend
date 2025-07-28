@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import type { Invoice } from '../types'
 import {
   Card,
   CardContent,
@@ -43,50 +44,12 @@ import {
   useAdminBillingStats,
   useDoctorBillingStats,
   useInvoices,
+  useMyInvoices,
   useDownloadInvoicePdf,
 } from '../hooks/use-billing'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-interface Invoice {
-  id: string
-  appointmentId: string
-  amount: number
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
-  paymentMethod?: 'PAYPAL' | 'CASH'
-  paymentId?: string
-  paidAt?: string
-  dueDate: string
-  createdAt: string
-  updatedAt: string
-  appointment?: {
-    id: string
-    date: string
-    duration: number
-    type: string
-    patient: {
-      id: string
-      firstName: string
-      lastName: string
-      email: string
-    }
-    doctor: {
-      id: string
-      firstName: string
-      lastName: string
-      email: string
-    }
-  }
-  payments?: Array<{
-    id: string
-    amount: number
-    currency: string
-    status: string
-    paymentMethod: string
-    paymentId: string
-    createdAt: string
-    updatedAt: string
-  }>
-}
+// Usando la interfaz Invoice importada desde '../types'
 
 export function BillingDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -94,7 +57,7 @@ export function BillingDashboard() {
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
   const [activeTab, setActiveTab] = useState('payments')
   const [page, setPage] = useState(1)
-  const [limit] = useState(10)
+  const [limit, setLimit] = useState(10)
 
   const { user } = useAuthStore()
   const isDoctor = user?.roles.includes(UserRole.DOCTOR)
@@ -112,18 +75,50 @@ export function BillingDashboard() {
     error: doctorError,
   } = useDoctorBillingStats(isDoctor)
 
-  // Invoices data
+  // Invoices data - usar el hook correcto según el rol
   const {
-    data: invoicesData,
-    isLoading: invoicesLoading,
-    error: invoicesError,
-    refetch: refetchInvoices,
+    data: adminInvoicesData,
+    isLoading: adminInvoicesLoading,
+    error: adminInvoicesError,
+    refetch: refetchAdminInvoices,
   } = useInvoices({
     page,
     limit,
     status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
     includeAppointment: true,
     includePayments: true,
+  })
+
+  const {
+    data: doctorInvoicesData,
+    isLoading: doctorInvoicesLoading,
+    error: doctorInvoicesError,
+    refetch: refetchDoctorInvoices,
+  } = useMyInvoices({
+    page,
+    limit,
+    status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+  })
+
+  // Usar los datos correctos según el rol
+  const invoicesData = isDoctor ? doctorInvoicesData : adminInvoicesData
+  const invoicesLoading = isDoctor
+    ? doctorInvoicesLoading
+    : adminInvoicesLoading
+  const invoicesError = isDoctor ? doctorInvoicesError : adminInvoicesError
+  const refetchInvoices = isDoctor
+    ? refetchDoctorInvoices
+    : refetchAdminInvoices
+
+  // Debug: ver qué datos tenemos
+  console.log('🔍 BillingDashboard Debug:', {
+    isDoctor,
+    invoicesData,
+    meta: invoicesData?.meta,
+    totalPages: invoicesData?.meta?.totalPages,
+    total: invoicesData?.meta?.total,
+    page,
+    limit,
   })
 
   // PDF download
@@ -167,11 +162,30 @@ export function BillingDashboard() {
     })
   }
 
+  // Tasa de cambio fija (debería venir de una API de tipo de cambio)
+  // Función de formato de moneda sin conversión
   const formatCurrency = (amount: number, currency: string = 'DOP') => {
-    return new Intl.NumberFormat('es-DO', {
+    const formatOptions: Intl.NumberFormatOptions = {
       style: 'currency',
       currency: currency,
-    }).format(amount)
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+
+    switch (currency) {
+      case 'DOP':
+        return new Intl.NumberFormat('es-DO', {
+          ...formatOptions,
+          currencyDisplay: 'symbol',
+        }).format(amount)
+      case 'USD':
+        return new Intl.NumberFormat('en-US', {
+          ...formatOptions,
+          currencyDisplay: 'symbol',
+        }).format(amount)
+      default:
+        return `${currency} ${amount.toFixed(2)}`
+    }
   }
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -389,7 +403,7 @@ export function BillingDashboard() {
                 </div>
                 <div>
                   <div className='text-sm font-medium'>
-                    Dr. {invoice.appointment.doctor.firstName}{' '}
+                    {invoice.appointment.doctor.firstName}{' '}
                     {invoice.appointment.doctor.lastName}
                   </div>
                   <div className='text-xs text-muted-foreground'>Médico</div>
@@ -426,7 +440,8 @@ export function BillingDashboard() {
             <div>
               <div className='font-medium'>Monto</div>
               <div className='text-muted-foreground'>
-                {formatCurrency(invoice.amount)}
+                {invoice.formattedAmount ||
+                  formatCurrency(invoice.amount, invoice.currency)}
               </div>
             </div>
           </div>
@@ -666,32 +681,81 @@ export function BillingDashboard() {
           )}
 
           {/* Pagination */}
-          {invoicesData?.meta && invoicesData.meta.totalPages > 1 && (
-            <div className='flex items-center justify-between'>
-              <div className='text-sm text-muted-foreground'>
-                Página {page} de {invoicesData.meta.totalPages} (
-                {invoicesData.meta.total} facturas)
+          {(() => {
+            const shouldShowPagination =
+              invoicesData?.meta && invoicesData.meta.totalPages > 1
+            console.log('🔍 Pagination condition:', {
+              hasMeta: !!invoicesData?.meta,
+              totalPages: invoicesData?.meta?.totalPages,
+              shouldShow: shouldShowPagination,
+            })
+            if (!shouldShowPagination) return null
+
+            return (
+              <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-2'>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm text-muted-foreground'>
+                    Mostrando {(page - 1) * limit + 1} -{' '}
+                    {Math.min(page * limit, invoicesData.meta.total)} de{' '}
+                    {invoicesData.meta.total} facturas
+                  </span>
+                  <Select
+                    value={String(limit)}
+                    onValueChange={(v) => {
+                      setLimit(Number(v))
+                      setPage(1)
+                    }}
+                  >
+                    <SelectTrigger className='w-24'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='10'>10 por página</SelectItem>
+                      <SelectItem value='20'>20 por página</SelectItem>
+                      <SelectItem value='50'>50 por página</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >
+                    Primera
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(page - 1)}
+                    disabled={!invoicesData.meta.hasPreviousPage}
+                  >
+                    Anterior
+                  </Button>
+                  <span className='text-sm font-mono px-2'>
+                    &lt; {page} &gt;
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(page + 1)}
+                    disabled={!invoicesData.meta.hasNextPage}
+                  >
+                    Siguiente
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setPage(invoicesData.meta.totalPages)}
+                    disabled={page === invoicesData.meta.totalPages}
+                  >
+                    Última
+                  </Button>
+                </div>
               </div>
-              <div className='space-x-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setPage(page - 1)}
-                  disabled={!invoicesData.meta.hasPreviousPage}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setPage(page + 1)}
-                  disabled={!invoicesData.meta.hasNextPage}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </TabsContent>
 
         <TabsContent value='analytics'>

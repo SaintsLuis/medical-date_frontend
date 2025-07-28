@@ -17,6 +17,7 @@ export interface Invoice {
   dueDate: string
   createdAt: string
   updatedAt: string
+  currency?: string // <-- nuevo campo
   appointment?: {
     id: string
     date: string
@@ -36,6 +37,7 @@ export interface Invoice {
     }
   }
   payments?: Payment[]
+  formattedAmount: string // Added for frontend formatting
 }
 
 export interface Payment {
@@ -179,28 +181,52 @@ export interface InvoiceAnalytics {
 }
 
 // Utility functions
-const USD_TO_DOP_RATE = 60.5
+// Tasa de cambio actualizada (debería venir de una API de tipo de cambio)
+//export const USD_TO_DOP_RATE = 60.5
 
-export const convertUSDToDOP = (amountUSD: number): number => {
-  return amountUSD * USD_TO_DOP_RATE
-}
-
-export const formatCurrency = (
-  amountInDOP: number,
-  currency: string = 'DOP'
-): string => {
-  return new Intl.NumberFormat('es-DO', {
+/**
+ * Formatea un monto en la moneda especificada
+ * @param amount Monto a formatear
+ * @param currency Moneda de destino ('DOP' o 'USD')
+ * @param originalCurrency Moneda original del monto (opcional, si se proporciona se hará conversión)
+ */
+export const formatCurrency = (amount: number, currency: string = 'DOP') => {
+  const formatOptions: Intl.NumberFormatOptions = {
     style: 'currency',
     currency: currency,
-  }).format(amountInDOP)
-}
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }
 
+  switch (currency) {
+    case 'DOP':
+      return new Intl.NumberFormat('es-DO', {
+        ...formatOptions,
+        currencyDisplay: 'symbol',
+      }).format(amount)
+    case 'USD':
+      return new Intl.NumberFormat('en-US', {
+        ...formatOptions,
+        currencyDisplay: 'symbol',
+      }).format(amount)
+    default:
+      return `${currency} ${amount.toFixed(2)}`
+  }
+}
+/**
+ * Formatea un monto que está en USD a la moneda especificada
+ * @deprecated Usar formatCurrency con el parámetro originalCurrency en su lugar
+ */
 export const formatCurrencyFromUSD = (
   amountUSD: number,
-  currency: string = 'DOP'
+  targetCurrency: string = 'DOP'
 ): string => {
-  const convertedAmount = convertUSDToDOP(amountUSD)
-  return formatCurrency(convertedAmount, currency)
+  return formatCurrency(amountUSD, targetCurrency)
+}
+
+export const formatInvoiceAmount = (invoice: Invoice): string => {
+  console.log('[FRONTEND] formatInvoiceAmount', invoice)
+  return invoice.formattedAmount
 }
 
 export const getStatusColor = (status: InvoiceStatus): string => {
@@ -271,20 +297,35 @@ export function mapPaymentFromApi(payment: unknown): Payment {
 
 export function mapInvoiceFromApi(invoice: unknown): Invoice {
   const inv = invoice as Record<string, unknown>
+  const amount = Number(inv.amount)
+  const status = (inv.status as InvoiceStatus) ?? 'PENDING'
+  const appointment = inv.appointment as
+    | { type?: 'PRESENCIAL' | 'VIRTUAL' }
+    | undefined
+
+  // Determinar moneda de visualización
+  const isVirtual = appointment?.type === 'VIRTUAL'
+  const displayCurrency = isVirtual ? 'USD' : 'DOP'
+
+  // Solo formatear el monto recibido, sin conversión
+  const formattedAmount = formatCurrency(amount, displayCurrency)
+
   return {
     id: String(inv.id),
     appointmentId: String(inv.appointmentId),
-    amount: Number(inv.amount),
-    status: (inv.status as InvoiceStatus) ?? 'PENDING',
+    amount: amount,
+    status: status,
     paymentMethod: (inv.paymentMethod as PaymentMethod) ?? undefined,
     paymentId: inv.paymentId ? String(inv.paymentId) : undefined,
     paidAt: inv.paidAt ? String(inv.paidAt) : undefined,
     dueDate: String(inv.dueDate),
     createdAt: String(inv.createdAt),
     updatedAt: String(inv.updatedAt),
+    currency: displayCurrency, // Usar la moneda de visualización
     appointment: inv.appointment as Invoice['appointment'],
     payments: Array.isArray(inv.payments)
       ? (inv.payments as unknown[]).map(mapPaymentFromApi)
       : undefined,
+    formattedAmount: formattedAmount,
   }
 }

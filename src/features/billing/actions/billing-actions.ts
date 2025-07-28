@@ -207,3 +207,9 @@ export async function deleteInvoiceAction(
 ): Promise<ServerApiResponse<{ message: string }>> {
   return serverApi.delete<{ message: string }>(`/invoices/${id}`)
 }
+
+export async function markInvoiceAsCashPaidAction(
+  id: string
+): Promise<ServerApiResponse<Invoice>> {
+  return serverApi.post<Invoice>(`/invoices/${id}/mark-cash-paid`)
+}
