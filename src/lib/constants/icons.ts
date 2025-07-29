@@ -9,6 +9,8 @@ import {
   Pill,
   Settings,
   Stethoscope,
+  Hospital,
+  HeartPulse,
 } from 'lucide-react'
 
 export const ICON_MAP = {
@@ -22,6 +24,8 @@ export const ICON_MAP = {
   Pill,
   Settings,
   Stethoscope,
+  Hospital,
+  HeartPulse,
 } as const
 
 export type IconName = keyof typeof ICON_MAP

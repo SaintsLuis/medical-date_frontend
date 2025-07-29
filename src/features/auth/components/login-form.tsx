@@ -14,13 +14,6 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 // import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth'
@@ -28,7 +21,6 @@ import { loginAction } from '../actions/auth-actions'
 
 import {
   Loader2,
-  User,
   Shield,
   Stethoscope,
   Eye,
@@ -37,10 +29,10 @@ import {
   Mail,
   AlertCircle,
   Building2,
-  Heart,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '../store/auth'
+import { Logo } from '@/components/logo'
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -60,7 +52,7 @@ export function LoginForm() {
     defaultValues: {
       email: '',
       password: '',
-      userType: 'auto',
+      userType: 'admin',
       rememberMe: false,
     },
   })
@@ -94,46 +86,20 @@ export function LoginForm() {
     }
   }
 
-  const getUserTypeIcon = (type: string) => {
-    switch (type) {
-      case 'admin':
-        return <Shield className='h-4 w-4' />
-      case 'doctor':
-        return <Stethoscope className='h-4 w-4' />
-      default:
-        return <User className='h-4 w-4' />
-    }
-  }
-
-  const getUserTypeLabel = (type: string) => {
-    switch (type) {
-      case 'admin':
-        return 'Administrador'
-      case 'doctor':
-        return 'Doctor'
-      case 'auto':
-        return 'Detectar automáticamente'
-      default:
-        return 'Seleccionar tipo'
-    }
+  const handleUserTypeSelect = (type: 'admin' | 'doctor' | 'auto') => {
+    setValue('userType', type)
   }
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4'>
       <div className='w-full max-w-md'>
         {/* Logo y branding */}
-        <div className='text-center mb-8'>
-          <div className='inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4'>
-            <Heart className='h-8 w-8 text-white' />
-          </div>
-          <h1 className='text-3xl font-bold text-gray-900 mb-2'>
-            Medical Date
-          </h1>
-          <p className='text-gray-600'>Plataforma de gestión médica integral</p>
+        <div className='flex items-center justify-center'>
+          <Logo width={280} height={280} />
         </div>
 
         {/* Formulario de login */}
-        <Card className='shadow-xl border-0 bg-white/80 backdrop-blur-sm'>
+        <Card className='shadow-xl border-0 bg-white/50 backdrop-blur-sm'>
           <CardHeader className='space-y-1 pb-4'>
             <CardTitle className='text-2xl font-bold text-center text-gray-900'>
               Iniciar Sesión
@@ -159,50 +125,39 @@ export function LoginForm() {
               )}
 
               {/* Tipo de usuario */}
-              <div className='space-y-2'>
-                <Label
-                  htmlFor='userType'
-                  className='text-sm font-medium text-gray-700'
-                >
+              <div className='space-y-3'>
+                <Label className='text-sm font-medium text-gray-700'>
                   Tipo de Usuario
                 </Label>
-                <Select
-                  value={watchedUserType}
-                  onValueChange={(value) =>
-                    setValue('userType', value as 'admin' | 'doctor' | 'auto')
-                  }
-                >
-                  <SelectTrigger className='h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500'>
-                    <SelectValue>
-                      <div className='flex items-center gap-2'>
-                        {getUserTypeIcon(watchedUserType)}
-                        <span className='text-gray-900'>
-                          {getUserTypeLabel(watchedUserType)}
-                        </span>
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='auto'>
-                      <div className='flex items-center gap-2'>
-                        <User className='h-4 w-4' />
-                        <span>Detectar automáticamente</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='admin'>
-                      <div className='flex items-center gap-2'>
-                        <Shield className='h-4 w-4' />
-                        <span>Administrador</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='doctor'>
-                      <div className='flex items-center gap-2'>
-                        <Stethoscope className='h-4 w-4' />
-                        <span>Doctor</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+
+                <div className='flex bg-gray-100 p-1 rounded-lg'>
+                  <button
+                    type='button'
+                    onClick={() => handleUserTypeSelect('admin')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md font-medium text-sm transition-all duration-200 ${
+                      watchedUserType === 'admin'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Shield className='h-4 w-4' />
+                    <span>Administrador</span>
+                  </button>
+
+                  <button
+                    type='button'
+                    onClick={() => handleUserTypeSelect('doctor')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md font-medium text-sm transition-all duration-200 ${
+                      watchedUserType === 'doctor'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Stethoscope className='h-4 w-4' />
+                    <span>Doctor</span>
+                  </button>
+                </div>
+
                 {errors.userType && (
                   <p className='text-sm text-red-600'>
                     {errors.userType.message}
