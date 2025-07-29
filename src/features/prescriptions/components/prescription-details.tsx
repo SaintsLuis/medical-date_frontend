@@ -28,6 +28,12 @@ import {
   getPrescriptionStatusText,
   getPrescriptionStatusColor,
 } from '../types'
+import {
+  getCategoryText,
+  getPriorityText,
+  MedicalRecordCategory,
+  Priority,
+} from '@/features/medical-records/types'
 import { useDownloadPrescriptionPdf } from '../hooks/use-prescriptions'
 
 interface PrescriptionDetailsProps {
@@ -222,7 +228,7 @@ export function PrescriptionDetails({
                       Nombre Completo
                     </label>
                     <p className='font-medium'>
-                      Dr. {prescription.doctor.firstName}{' '}
+                      {prescription.doctor.firstName}{' '}
                       {prescription.doctor.lastName}
                     </p>
                   </div>
@@ -230,7 +236,9 @@ export function PrescriptionDetails({
                     <label className='text-sm font-medium text-gray-500'>
                       Email
                     </label>
-                    <p>{prescription.doctor.email}</p>
+                    <p className='break-all text-sm'>
+                      {prescription.doctor.email}
+                    </p>
                   </div>
                   {prescription.doctor.doctorProfile && (
                     <>
@@ -301,7 +309,12 @@ export function PrescriptionDetails({
                       <label className='text-sm font-medium text-gray-500'>
                         Categoría
                       </label>
-                      <p>{prescription.medicalRecord.category}</p>
+                      <p>
+                        {getCategoryText(
+                          prescription.medicalRecord
+                            .category as MedicalRecordCategory
+                        )}
+                      </p>
                     </div>
                   )}
                   {prescription.medicalRecord.priority && (
@@ -309,7 +322,11 @@ export function PrescriptionDetails({
                       <label className='text-sm font-medium text-gray-500'>
                         Prioridad
                       </label>
-                      <p>{prescription.medicalRecord.priority}</p>
+                      <p>
+                        {getPriorityText(
+                          prescription.medicalRecord.priority as Priority
+                        )}
+                      </p>
                     </div>
                   )}
                 </div>

@@ -36,7 +36,7 @@ import { useAuthStore } from '@/features/auth/store/auth'
 import { UserRole } from '@/types/auth'
 import {
   formatCurrency,
-  formatCurrencyFromUSD,
+  formatInvoiceAmount,
   getPaymentMethodText,
   getDaysOverdue,
   isOverdue,
@@ -389,7 +389,7 @@ export function InvoiceAnalytics() {
                   </div>
                   <div className='text-right'>
                     <div className='font-medium'>
-                      {formatCurrencyFromUSD(invoice.amount)}
+                      {formatInvoiceAmount(invoice)}
                     </div>
                     <Badge variant='destructive' className='text-xs'>
                       {getDaysOverdue(invoice.dueDate)} días vencida
@@ -425,7 +425,7 @@ export function InvoiceAnalytics() {
                 Ingresos Pendientes:
               </span>
               <span className='font-medium text-yellow-600'>
-                {formatCurrency(stats.invoices.pendingRevenue, 'DOP')}
+                {formatCurrency(stats.invoices.pendingRevenue)}
               </span>
             </div>
             <div className='flex justify-between'>
@@ -433,7 +433,7 @@ export function InvoiceAnalytics() {
                 Ingresos Confirmados:
               </span>
               <span className='font-medium text-green-600'>
-                {formatCurrency(stats.payments.completedAmount, 'DOP')}
+                {formatCurrency(stats.payments.completedAmount)}
               </span>
             </div>
           </CardContent>

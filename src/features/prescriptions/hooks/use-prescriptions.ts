@@ -93,9 +93,13 @@ export function useCreatePrescription() {
 
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set the new prescription in cache
+      queryClient.setQueryData(prescriptionKeys.detail(data.id), data)
+
       // Invalidate and refetch prescriptions queries
       queryClient.invalidateQueries({ queryKey: prescriptionKeys.all })
+      queryClient.invalidateQueries({ queryKey: prescriptionKeys.lists() })
       toast.success('Prescripción creada exitosamente')
     },
     onError: (error: Error) => {
@@ -127,9 +131,13 @@ export function useUpdatePrescription() {
 
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update the prescription in cache
+      queryClient.setQueryData(prescriptionKeys.detail(data.id), data)
+
       // Invalidate and refetch prescriptions queries
       queryClient.invalidateQueries({ queryKey: prescriptionKeys.all })
+      queryClient.invalidateQueries({ queryKey: prescriptionKeys.lists() })
       toast.success('Prescripción actualizada exitosamente')
     },
     onError: (error: Error) => {
@@ -152,10 +160,17 @@ export function useDeletePrescription() {
 
       return result.data
     },
-    onSuccess: () => {
-      // Invalidate and refetch prescriptions queries
-      queryClient.invalidateQueries({ queryKey: prescriptionKeys.all })
+    onSuccess: (_, id) => {
       toast.success('Prescripción eliminada exitosamente')
+
+      // Remove the specific record from cache
+      queryClient.removeQueries({ queryKey: prescriptionKeys.detail(id) })
+
+      // Invalidate ALL prescription queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: prescriptionKeys.all })
+
+      // Also invalidate specific query patterns to be extra sure
+      queryClient.invalidateQueries({ queryKey: prescriptionKeys.lists() })
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Error al eliminar prescripción')

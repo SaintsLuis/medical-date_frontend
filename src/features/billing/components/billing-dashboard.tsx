@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Invoice } from '../types'
+import { formatCurrency, formatInvoiceAmount } from '../types'
 import {
   Card,
   CardContent,
@@ -160,32 +161,6 @@ export function BillingDashboard() {
       month: 'short',
       day: 'numeric',
     })
-  }
-
-  // Tasa de cambio fija (debería venir de una API de tipo de cambio)
-  // Función de formato de moneda sin conversión
-  const formatCurrency = (amount: number, currency: string = 'DOP') => {
-    const formatOptions: Intl.NumberFormatOptions = {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }
-
-    switch (currency) {
-      case 'DOP':
-        return new Intl.NumberFormat('es-DO', {
-          ...formatOptions,
-          currencyDisplay: 'symbol',
-        }).format(amount)
-      case 'USD':
-        return new Intl.NumberFormat('en-US', {
-          ...formatOptions,
-          currencyDisplay: 'symbol',
-        }).format(amount)
-      default:
-        return `${currency} ${amount.toFixed(2)}`
-    }
   }
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -361,8 +336,7 @@ export function BillingDashboard() {
                 Factura #{invoice.id.slice(-8)}
               </CardTitle>
               <CardDescription className='flex items-center gap-2'>
-                {formatCurrency(invoice.amount)} •{' '}
-                {formatDate(invoice.createdAt)}
+                {formatInvoiceAmount(invoice)} • {formatDate(invoice.createdAt)}
               </CardDescription>
             </div>
           </div>

@@ -9,6 +9,12 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDoctorMedicalRecordAnalytics } from '../hooks/use-medical-records'
+import {
+  getCategoryText,
+  getPriorityText,
+  MedicalRecordCategory,
+  Priority,
+} from '../types'
 import { Loader2, TrendingUp, Users, Calendar, AlertCircle } from 'lucide-react'
 import {
   BarChart,
@@ -164,7 +170,9 @@ export function MedicalRecordAnalytics({
                     cy='50%'
                     labelLine={false}
                     label={({ category, percentage }) =>
-                      `${category}: ${percentage}%`
+                      `${getCategoryText(
+                        category as MedicalRecordCategory
+                      )}: ${percentage}%`
                     }
                     outerRadius={80}
                     fill='#8884d8'
@@ -202,7 +210,12 @@ export function MedicalRecordAnalytics({
               <ResponsiveContainer width='100%' height={400}>
                 <BarChart data={analytics.priorityDistribution}>
                   <CartesianGrid strokeDasharray='3 3' />
-                  <XAxis dataKey='priority' />
+                  <XAxis
+                    dataKey='priority'
+                    tickFormatter={(value) =>
+                      getPriorityText(value as Priority)
+                    }
+                  />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey='count' fill='#8884d8'>

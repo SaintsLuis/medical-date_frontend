@@ -299,16 +299,12 @@ export function mapInvoiceFromApi(invoice: unknown): Invoice {
   const inv = invoice as Record<string, unknown>
   const amount = Number(inv.amount)
   const status = (inv.status as InvoiceStatus) ?? 'PENDING'
-  const appointment = inv.appointment as
-    | { type?: 'PRESENCIAL' | 'VIRTUAL' }
-    | undefined
 
-  // Determinar moneda de visualización
-  const isVirtual = appointment?.type === 'VIRTUAL'
-  const displayCurrency = isVirtual ? 'USD' : 'DOP'
+  // Usar la moneda real de la base de datos, con fallback a DOP
+  const currency = (inv.currency as string) || 'DOP'
 
-  // Solo formatear el monto recibido, sin conversión
-  const formattedAmount = formatCurrency(amount, displayCurrency)
+  // Formatear el monto con la moneda correcta
+  const formattedAmount = formatCurrency(amount, currency)
 
   return {
     id: String(inv.id),
@@ -321,7 +317,7 @@ export function mapInvoiceFromApi(invoice: unknown): Invoice {
     dueDate: String(inv.dueDate),
     createdAt: String(inv.createdAt),
     updatedAt: String(inv.updatedAt),
-    currency: displayCurrency, // Usar la moneda de visualización
+    currency: currency, // Usar la moneda real de la base de datos
     appointment: inv.appointment as Invoice['appointment'],
     payments: Array.isArray(inv.payments)
       ? (inv.payments as unknown[]).map(mapPaymentFromApi)

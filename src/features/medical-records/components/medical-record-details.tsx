@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -274,65 +273,127 @@ export function MedicalRecordDetails({
                       : 'Información del Doctor'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className='space-y-3'>
-                  <div className='flex items-center space-x-2'>
-                    <User className='h-4 w-4 text-muted-foreground' />
-                    <span className='font-medium'>Nombre:</span>
-                    <span>
-                      {isDoctor
-                        ? `${
-                            record.patient?.firstName ||
-                            record.patientProfile?.user.firstName
-                          } ${
-                            record.patient?.lastName ||
-                            record.patientProfile?.user.lastName
-                          }`
-                        : `Dr. ${record.doctor?.firstName} ${record.doctor?.lastName}`}
-                    </span>
+                <CardContent>
+                  <div className='grid gap-4 md:grid-cols-2'>
+                    <div className='space-y-4'>
+                      <div className='bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500'>
+                        <div className='flex items-center space-x-3'>
+                          <div className='w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center'>
+                            <User className='h-5 w-5 text-blue-600' />
+                          </div>
+                          <div>
+                            <span className='font-medium text-sm text-muted-foreground block'>
+                              Nombre Completo
+                            </span>
+                            <p className='text-sm font-medium text-gray-900'>
+                              {isDoctor
+                                ? `${
+                                    record.patient?.firstName ||
+                                    record.patientProfile?.user.firstName
+                                  } ${
+                                    record.patient?.lastName ||
+                                    record.patientProfile?.user.lastName
+                                  }`
+                                : `Dr. ${record.doctor?.firstName} ${record.doctor?.lastName}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className='bg-gray-50 p-4 rounded-lg border-l-4 border-gray-400'>
+                        <div className='flex items-center space-x-3'>
+                          <div className='w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center'>
+                            <Mail className='h-5 w-5 text-gray-600' />
+                          </div>
+                          <div>
+                            <span className='font-medium text-sm text-muted-foreground block'>
+                              Correo Electrónico
+                            </span>
+                            <p className='text-sm font-medium text-gray-900'>
+                              {isDoctor
+                                ? record.patient?.email ||
+                                  record.patientProfile?.user.email
+                                : record.doctor?.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {isDoctor && record.patientProfile?.birthDate && (
+                        <div className='bg-green-50 p-4 rounded-lg border-l-4 border-green-500'>
+                          <div className='flex items-center space-x-3'>
+                            <div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center'>
+                              <Calendar className='h-5 w-5 text-green-600' />
+                            </div>
+                            <div>
+                              <span className='font-medium text-sm text-muted-foreground block'>
+                                Fecha de Nacimiento
+                              </span>
+                              <p className='text-sm font-medium text-gray-900'>
+                                {formatDate(record.patientProfile.birthDate)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className='space-y-4'>
+                      {isDoctor && record.patientProfile?.gender && (
+                        <div className='bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500'>
+                          <div className='flex items-center space-x-3'>
+                            <div className='w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center'>
+                              <User className='h-5 w-5 text-purple-600' />
+                            </div>
+                            <div>
+                              <span className='font-medium text-sm text-muted-foreground block'>
+                                Género
+                              </span>
+                              <p className='text-sm font-medium text-gray-900'>
+                                {record.patientProfile.gender}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isDoctor && record.patientProfile?.bloodType && (
+                        <div className='bg-red-50 p-4 rounded-lg border-l-4 border-red-500'>
+                          <div className='flex items-center space-x-3'>
+                            <div className='w-10 h-10 bg-red-100 rounded-full flex items-center justify-center'>
+                              <Droplets className='h-5 w-5 text-red-600' />
+                            </div>
+                            <div>
+                              <span className='font-medium text-sm text-muted-foreground block'>
+                                Tipo de Sangre
+                              </span>
+                              <p className='text-sm font-medium text-gray-900'>
+                                {record.patientProfile.bloodType}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!isDoctor && record.doctor?.doctorProfile?.license && (
+                        <div className='bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500'>
+                          <div className='flex items-center space-x-3'>
+                            <div className='w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center'>
+                              <FileText className='h-5 w-5 text-orange-600' />
+                            </div>
+                            <div>
+                              <span className='font-medium text-sm text-muted-foreground block'>
+                                Licencia Médica
+                              </span>
+                              <p className='text-sm font-medium text-gray-900'>
+                                {record.doctor.doctorProfile.license}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  <div className='flex items-center space-x-2'>
-                    <Mail className='h-4 w-4 text-muted-foreground' />
-                    <span className='font-medium'>Email:</span>
-                    <span>
-                      {isDoctor
-                        ? record.patient?.email ||
-                          record.patientProfile?.user.email
-                        : record.doctor?.email}
-                    </span>
-                  </div>
-
-                  {isDoctor && record.patientProfile?.birthDate && (
-                    <div className='flex items-center space-x-2'>
-                      <Calendar className='h-4 w-4 text-muted-foreground' />
-                      <span className='font-medium'>Fecha de Nacimiento:</span>
-                      <span>{formatDate(record.patientProfile.birthDate)}</span>
-                    </div>
-                  )}
-
-                  {isDoctor && record.patientProfile?.gender && (
-                    <div className='flex items-center space-x-2'>
-                      <User className='h-4 w-4 text-muted-foreground' />
-                      <span className='font-medium'>Género:</span>
-                      <span>{record.patientProfile.gender}</span>
-                    </div>
-                  )}
-
-                  {isDoctor && record.patientProfile?.bloodType && (
-                    <div className='flex items-center space-x-2'>
-                      <Droplets className='h-4 w-4 text-muted-foreground' />
-                      <span className='font-medium'>Tipo de Sangre:</span>
-                      <span>{record.patientProfile.bloodType}</span>
-                    </div>
-                  )}
-
-                  {!isDoctor && record.doctor?.doctorProfile?.license && (
-                    <div className='flex items-center space-x-2'>
-                      <FileText className='h-4 w-4 text-muted-foreground' />
-                      <span className='font-medium'>Licencia:</span>
-                      <span>{record.doctor.doctorProfile.license}</span>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -344,59 +405,73 @@ export function MedicalRecordDetails({
                     Información Médica
                   </CardTitle>
                 </CardHeader>
-                <CardContent className='space-y-3'>
-                  <div>
-                    <span className='font-medium text-sm text-muted-foreground block mb-1'>
-                      Síntomas:
-                    </span>
-                    <div className='space-y-1'>
-                      {Array.isArray(record.symptoms) ? (
-                        record.symptoms.map((symptom, index) => (
-                          <Badge
-                            key={index}
-                            variant='secondary'
-                            className='mr-1 mb-1'
-                          >
-                            {symptom}
-                          </Badge>
-                        ))
-                      ) : (
-                        <p className='text-sm'>{record.symptoms}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <span className='font-medium text-sm text-muted-foreground block mb-1'>
-                      Diagnóstico:
-                    </span>
-                    <p className='text-sm'>{record.diagnosis}</p>
-                  </div>
-
-                  {record.allergies && record.allergies.length > 0 && (
-                    <>
-                      <Separator />
+                <CardContent>
+                  <div className='grid gap-6 md:grid-cols-2'>
+                    <div className='space-y-4'>
                       <div>
-                        <span className='font-medium text-sm text-muted-foreground block mb-1'>
-                          Alergias:
+                        <span className='font-medium text-sm text-muted-foreground block mb-2'>
+                          Síntomas:
                         </span>
-                        <div className='space-y-1'>
-                          {record.allergies.map((allergy, index) => (
-                            <Badge
+                        <div className='space-y-2'>
+                          {record.symptoms.map((symptom, index) => (
+                            <div
                               key={index}
-                              variant='destructive'
-                              className='mr-1 mb-1'
+                              className='flex items-center space-x-2'
                             >
-                              <AlertTriangle className='mr-1 h-3 w-3' />
-                              {allergy}
-                            </Badge>
+                              <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                              <span className='text-sm'>{symptom}</span>
+                            </div>
                           ))}
                         </div>
                       </div>
-                    </>
-                  )}
+
+                      <div>
+                        <span className='font-medium text-sm text-muted-foreground block mb-2'>
+                          Diagnóstico:
+                        </span>
+                        <div className='bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500'>
+                          <p className='text-sm'>{record.diagnosis}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className='space-y-4'>
+                      {record.allergies && record.allergies.length > 0 && (
+                        <div>
+                          <span className='font-medium text-sm text-muted-foreground block mb-2'>
+                            Alergias:
+                          </span>
+                          <div className='space-y-2'>
+                            {record.allergies.map((allergy, index) => (
+                              <div
+                                key={index}
+                                className='flex items-center space-x-2'
+                              >
+                                <AlertTriangle className='h-4 w-4 text-red-500' />
+                                <Badge
+                                  variant='destructive'
+                                  className='text-xs'
+                                >
+                                  {allergy}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {record.treatment && (
+                        <div>
+                          <span className='font-medium text-sm text-muted-foreground block mb-2'>
+                            Tratamiento:
+                          </span>
+                          <div className='bg-green-50 p-3 rounded-lg border-l-4 border-green-500'>
+                            <p className='text-sm'>{record.treatment}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
+// import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth'
 import { loginAction } from '../actions/auth-actions'
@@ -273,7 +273,7 @@ export function LoginForm() {
               </div>
 
               {/* Recordar sesión */}
-              <div className='flex items-center space-x-2'>
+              {/* <div className='flex items-center space-x-2'>
                 <Checkbox
                   {...register('rememberMe')}
                   id='rememberMe'
@@ -286,10 +286,10 @@ export function LoginForm() {
                 >
                   Mantener sesión iniciada
                 </Label>
-              </div>
+              </div> */}
             </CardContent>
 
-            <CardFooter className='flex flex-col space-y-4'>
+            <CardFooter className='flex flex-col space-y-4 mt-4'>
               <Button
                 type='submit'
                 className='w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors'
@@ -326,7 +326,7 @@ export function LoginForm() {
           <p className='text-xs text-gray-500'>
             © 2025 Medical Date. Todos los derechos reservados.
           </p>
-          <div className='flex justify-center gap-4 mt-2'>
+          {/* <div className='flex justify-center gap-4 mt-2'>
             <Button variant='link' className='text-xs text-gray-500 p-0 h-auto'>
               Privacidad
             </Button>
@@ -336,7 +336,7 @@ export function LoginForm() {
             <Button variant='link' className='text-xs text-gray-500 p-0 h-auto'>
               Soporte
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

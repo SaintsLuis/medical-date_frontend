@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -107,6 +107,15 @@ export function MedicalRecordsManagement() {
   const myRecordsQuery = useMyMedicalRecords(queryParams, isDoctor)
   const allRecordsQuery = useMedicalRecords(queryParams, isAdmin && !isDoctor)
 
+  // Force refetch when query params change
+  useEffect(() => {
+    if (isDoctor) {
+      myRecordsQuery.refetch()
+    } else {
+      allRecordsQuery.refetch()
+    }
+  }, [queryParams, isDoctor, myRecordsQuery, allRecordsQuery])
+
   const recordsData = isDoctor ? myRecordsQuery.data : allRecordsQuery.data
   const recordsLoading = isDoctor
     ? myRecordsQuery.isLoading
@@ -194,8 +203,16 @@ export function MedicalRecordsManagement() {
       await deleteMutation.mutateAsync(selectedRecord.id)
       setIsDeleteDialogOpen(false)
       setSelectedRecord(null)
+
+      // Force refetch to ensure UI is updated
+      if (isDoctor) {
+        myRecordsQuery.refetch()
+      } else {
+        allRecordsQuery.refetch()
+      }
     } catch (error) {
       console.error('Error deleting record:', error)
+      // Error is already handled by the mutation's onError
     }
   }
 
@@ -793,11 +810,11 @@ export function MedicalRecordsManagement() {
         record={selectedRecord}
         onSuccess={() => {
           setSelectedRecord(null)
-          // Invalidate queries to refresh data
-          if (isDoctor || isAdmin) {
-            allRecordsQuery.refetch()
-          } else {
+          // Force refetch to ensure UI is updated
+          if (isDoctor) {
             myRecordsQuery.refetch()
+          } else {
+            allRecordsQuery.refetch()
           }
         }}
       />

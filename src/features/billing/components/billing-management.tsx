@@ -339,12 +339,12 @@ export function BillingManagement() {
           <CardContent>
             <div className='text-2xl font-bold'>
               {stats?.invoices.totalRevenue
-                ? formatCurrency(stats.invoices.totalRevenue, 'DOP')
+                ? formatCurrency(stats.invoices.totalRevenue)
                 : 'RD$0.00'}
             </div>
             <p className='text-xs text-muted-foreground'>
               {efectivoPendiente
-                ? formatCurrency(efectivoPendiente, 'DOP')
+                ? formatCurrency(efectivoPendiente)
                 : 'RD$0.00'}{' '}
               pendientes
             </p>
@@ -377,7 +377,7 @@ export function BillingManagement() {
             <div className='text-2xl font-bold'>{stats.payments.completed}</div>
             <p className='text-xs text-muted-foreground'>
               {stats?.payments.completedAmount
-                ? formatCurrency(stats.payments.completedAmount, 'DOP')
+                ? formatCurrency(stats.payments.completedAmount)
                 : 'RD$0.00'}
             </p>
           </CardContent>

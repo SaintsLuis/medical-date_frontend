@@ -140,7 +140,6 @@ export function PrescriptionsTable({
             <TableHeader>
               <TableRow>
                 <TableHead>Paciente</TableHead>
-                <TableHead>Doctor</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Medicamentos</TableHead>
                 <TableHead>Válida Hasta</TableHead>
@@ -160,20 +159,6 @@ export function PrescriptionsTable({
                       </p>
                       <p className='text-sm text-gray-500'>
                         {prescription.patient?.email || 'Sin email'}
-                      </p>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <div>
-                      <p className='font-medium'>
-                        {prescription.doctor
-                          ? `Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`
-                          : 'Doctor no encontrado'}
-                      </p>
-                      <p className='text-sm text-gray-500'>
-                        {prescription.doctor?.doctorProfile?.license ||
-                          'Sin licencia'}
                       </p>
                     </div>
                   </TableCell>
