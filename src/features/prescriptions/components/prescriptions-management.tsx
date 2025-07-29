@@ -1,15 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  Plus,
-  Search,
-  Filter,
-  FileText,
-  Clock,
-  Activity,
-  CheckCircle,
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Search, Filter, Activity, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,7 +28,7 @@ import { PrescriptionsTable } from './prescriptions-table'
 import { PrescriptionForm } from './prescription-form'
 import { PrescriptionDetails } from './prescription-details'
 import { PrescriptionsSkeleton } from './prescriptions-skeleton'
-import { PrescriptionStatus } from '../types'
+
 import type { PrescriptionFilters, Prescription } from '../types'
 
 interface PrescriptionsManagementProps {
@@ -67,6 +59,7 @@ export function PrescriptionsManagement({
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [searchInput, setSearchInput] = useState(filters.search || '')
 
   // Query parameters
   const queryParams = {
@@ -86,8 +79,27 @@ export function PrescriptionsManagement({
     data: prescriptionsData,
     isLoading: loading,
     error,
+    refetch,
   } = usePrescriptions(queryParams)
   const deleteMutation = useDeletePrescription()
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFilters((prev) => ({
+        ...prev,
+        search: searchInput,
+        page: 1, // Reset page when searching
+      }))
+    }, 500) // 500ms delay
+
+    return () => clearTimeout(timeoutId)
+  }, [searchInput])
+
+  // Force refetch when query params change
+  useEffect(() => {
+    refetch()
+  }, [queryParams, refetch])
 
   const prescriptions = prescriptionsData?.data || []
   const pagination = {
@@ -112,8 +124,27 @@ export function PrescriptionsManagement({
     setFilters((prev) => ({ ...prev, page }))
   }
 
+  const handleClearFilters = () => {
+    setFilters({
+      page: 1,
+      pageSize: 10,
+      status: 'ALL',
+      search: '',
+      ...(doctorId && { doctorId }),
+      ...(patientId && { patientId }),
+    })
+    setSearchInput('')
+  }
+
   const handleDeletePrescription = async (prescription: Prescription) => {
-    deleteMutation.mutate(prescription.id)
+    try {
+      await deleteMutation.mutateAsync(prescription.id)
+      // Force refetch to ensure UI is updated
+      // The mutation already invalidates queries, but we can force a refetch for extra safety
+    } catch (error) {
+      console.error('Error deleting prescription:', error)
+      // Error is already handled by the mutation's onError
+    }
   }
 
   const handleViewDetails = (prescription: Prescription) => {
@@ -162,6 +193,8 @@ export function PrescriptionsManagement({
                 medicalRecordId={undefined}
                 onSuccess={() => {
                   setShowCreateDialog(false)
+                  // Force refetch to ensure UI is updated
+                  // The mutation already invalidates queries, but we can force a refetch for extra safety
                 }}
               />
             </DialogContent>
@@ -187,8 +220,8 @@ export function PrescriptionsManagement({
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
                 <Input
                   placeholder='Buscar prescripciones...'
-                  value={filters.search || ''}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className='pl-10'
                 />
               </div>
@@ -261,224 +294,119 @@ export function PrescriptionsManagement({
               />
             </div>
           </div>
+
+          {/* Clear filters button */}
+          <div className='flex justify-end mt-4'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={handleClearFilters}
+              className='flex items-center gap-2'
+            >
+              <X className='w-4 h-4' />
+              Limpiar Filtros
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Error State */}
+      {/* Error Display */}
       {error && (
         <Card className='border-red-200 bg-red-50'>
-          <CardContent className='p-4'>
-            <p className='text-red-600 text-sm'>{error.message}</p>
+          <CardContent className='pt-6'>
+            <div className='flex items-center gap-2 text-red-600'>
+              <Activity className='h-4 w-4' />
+              <p>Error al cargar las prescripciones: {error.message}</p>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Stats */}
-      <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+      {/* Prescriptions Table */}
+      <PrescriptionsTable
+        prescriptions={prescriptions}
+        loading={loading}
+        onView={handleViewDetails}
+        onEdit={handleEditPrescription}
+        onDelete={handleDeletePrescription}
+      />
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
         <Card>
-          <CardContent className='p-6'>
-            <div className='flex items-center'>
-              <div className='p-2 bg-blue-100 rounded-lg'>
-                <FileText className='w-6 h-6 text-blue-600' />
+          <CardContent className='pt-6'>
+            <div className='flex items-center justify-between'>
+              <div className='text-sm text-gray-600'>
+                Mostrando {(pagination.page - 1) * pagination.pageSize + 1} a{' '}
+                {Math.min(
+                  pagination.page * pagination.pageSize,
+                  pagination.total
+                )}{' '}
+                de {pagination.total} prescripciones
               </div>
-              <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Total</p>
-                <p className='text-2xl font-bold text-gray-900'>
-                  {pagination.total}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className='p-6'>
-            <div className='flex items-center'>
-              <div className='p-2 bg-yellow-100 rounded-lg'>
-                <Clock className='w-6 h-6 text-yellow-600' />
-              </div>
-              <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Pendientes</p>
-                <p className='text-2xl font-bold text-gray-900'>
-                  {
-                    prescriptions.filter(
-                      (p) => p.status === PrescriptionStatus.ACTIVE
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className='p-6'>
-            <div className='flex items-center'>
-              <div className='p-2 bg-green-100 rounded-lg'>
-                <Activity className='w-6 h-6 text-green-600' />
-              </div>
-              <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Activas</p>
-                <p className='text-2xl font-bold text-gray-900'>
-                  {
-                    prescriptions.filter(
-                      (p) => p.status === PrescriptionStatus.ACTIVE
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className='p-6'>
-            <div className='flex items-center'>
-              <div className='p-2 bg-purple-100 rounded-lg'>
-                <CheckCircle className='w-6 h-6 text-purple-600' />
-              </div>
-              <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Completadas</p>
-                <p className='text-2xl font-bold text-gray-900'>
-                  {
-                    prescriptions.filter(
-                      (p) => p.status === PrescriptionStatus.COMPLETED
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Table */}
-      <div className='space-y-6 pb-8'>
-        <PrescriptionsTable
-          prescriptions={prescriptions}
-          loading={loading}
-          onView={handleViewDetails}
-          onEdit={handleEditPrescription}
-          onDelete={handleDeletePrescription}
-        />
-
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className='flex items-center justify-between border-t pt-6 mt-6'>
-            <p className='text-sm text-muted-foreground'>
-              Mostrando {(pagination.page - 1) * pagination.pageSize + 1} a{' '}
-              {Math.min(
-                pagination.page * pagination.pageSize,
-                pagination.total
-              )}{' '}
-              de {pagination.total} resultados
-            </p>
-
-            <div className='flex items-center gap-2'>
-              {/* Previous button */}
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1}
-              >
-                Anterior
-              </Button>
-
-              {/* Page numbers - simplified for better performance */}
-              <div className='flex items-center gap-1'>
-                {/* Show current page info */}
-                <span className='px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md'>
-                  {pagination.page}
+              <div className='flex items-center gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                >
+                  Anterior
+                </Button>
+                <span className='text-sm'>
+                  Página {pagination.page} de {pagination.totalPages}
                 </span>
-                <span className='text-sm text-muted-foreground'>
-                  de {pagination.totalPages}
-                </span>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  Siguiente
+                </Button>
               </div>
-
-              {/* Next button */}
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.totalPages}
-              >
-                Siguiente
-              </Button>
-
-              {/* Quick jump to page */}
-              {pagination.totalPages > 5 && (
-                <div className='flex items-center gap-2 ml-4 border-l pl-4'>
-                  <span className='text-sm text-muted-foreground'>
-                    Ir a página:
-                  </span>
-                  <Select
-                    value={pagination.page.toString()}
-                    onValueChange={(value) => handlePageChange(parseInt(value))}
-                  >
-                    <SelectTrigger className='w-20'>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: pagination.totalPages }, (_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {i + 1}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Details Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
-          <DialogHeader>
-            <DialogTitle>Detalles de la Prescripción</DialogTitle>
-          </DialogHeader>
-          {selectedPrescription && (
-            <PrescriptionDetails
-              isOpen={true}
-              onClose={() => setShowDetailsDialog(false)}
-              prescription={selectedPrescription}
-              onEdit={() => {
-                setShowDetailsDialog(false)
-                setShowEditDialog(true)
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <PrescriptionDetails
+        isOpen={showDetailsDialog}
+        onClose={() => setShowDetailsDialog(false)}
+        prescription={selectedPrescription}
+        onEdit={() => {
+          setShowDetailsDialog(false)
+          setShowEditDialog(true)
+        }}
+      />
 
       {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
-          <DialogHeader>
-            <DialogTitle>Editar Prescripción</DialogTitle>
-            <DialogDescription>
-              Modifique la información de la prescripción médica
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPrescription && (
+      {selectedPrescription && (
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+            <DialogHeader>
+              <DialogTitle>Editar Prescripción</DialogTitle>
+              <DialogDescription>
+                Modifica la información de la prescripción médica
+              </DialogDescription>
+            </DialogHeader>
             <PrescriptionForm
               isOpen={true}
-              onClose={() => {
-                setShowEditDialog(false)
-                setSelectedPrescription(null)
-              }}
+              onClose={() => setShowEditDialog(false)}
               prescription={selectedPrescription}
+              selectedPatientId={selectedPrescription.patientId}
+              medicalRecordId={selectedPrescription.medicalRecordId}
               onSuccess={() => {
                 setShowEditDialog(false)
                 setSelectedPrescription(null)
+                // Force refetch to ensure UI is updated
+                // The mutation already invalidates queries, but we can force a refetch for extra safety
               }}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
