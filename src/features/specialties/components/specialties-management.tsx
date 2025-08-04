@@ -744,7 +744,7 @@ export function SpecialtiesManagement() {
           </div>
         </TabsContent>
 
-        <TabsContent value='specialties' className='space-y-6'>
+        <TabsContent value='specialties' className='space-y-6 pb-4'>
           {/* Barra de búsqueda y filtros */}
           <Card className='bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200'>
             <CardContent className='p-4'>

@@ -2,16 +2,20 @@
 
 import { useState } from 'react'
 import {
-  Search,
-  RefreshCw,
   Edit,
   Trash2,
   Plus,
+  Search,
+  Filter,
+  RefreshCw,
   Power,
   PowerOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Card,
   CardContent,
@@ -19,7 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -28,10 +31,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { useAllActiveSpecialties } from '@/features/specialties/hooks/use-specialties'
+import { useAllActiveClinics } from '@/features/clinics'
 import {
   useDoctors,
   useDoctorStats,
@@ -40,9 +52,54 @@ import {
 } from '../hooks/use-doctors'
 import { DoctorForm } from './doctor-form'
 import type { Doctor } from '../types'
+import Link from 'next/link'
 
 // Importar componentes de gráficos
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+
+// ==============================================
+// Función para asignar colores a especialidades
+// ==============================================
+
+const getSpecialtyColor = (specialtyName: string): string => {
+  const colorMap: Record<string, string> = {
+    // Especialidades principales - Colores vibrantes
+    Cardiología: '#ef4444', // Rojo
+    Ortopedia: '#10b981', // Verde esmeralda
+    Pediatría: '#3b82f6', // Azul
+    Dermatología: '#8b5cf6', // Púrpura
+    Neurología: '#f59e0b', // Ámbar
+    Psiquiatría: '#ec4899', // Rosa
+    Ginecología: '#06b6d4', // Cian
+    Oftalmología: '#84cc16', // Verde lima
+    Otorrinolaringología: '#f97316', // Naranja
+    Urología: '#6366f1', // Índigo
+
+    // Especialidades secundarias - Colores más suaves
+    Endocrinología: '#14b8a6', // Verde azulado
+    Gastroenterología: '#f43f5e', // Rosa rojizo
+    Hematología: '#a855f7', // Violeta
+    Infectología: '#eab308', // Amarillo
+    Nefrología: '#22c55e', // Verde
+    Oncología: '#dc2626', // Rojo oscuro
+    Neumología: '#0891b2', // Azul cian
+    Reumatología: '#7c3aed', // Violeta oscuro
+    Traumatología: '#059669', // Verde esmeralda oscuro
+    'Cirugía General': '#be185d', // Rosa oscuro
+
+    // Especialidades adicionales
+    'Medicina Interna': '#0d9488', // Verde azulado oscuro
+    'Medicina Familiar': '#65a30d', // Verde lima oscuro
+    Anestesiología: '#9333ea', // Violeta medio
+    Radiología: '#0ea5e9', // Azul cielo
+    Patología: '#64748b', // Gris azulado
+    'Medicina de Emergencia': '#dc2626', // Rojo
+    'Medicina Preventiva': '#16a34a', // Verde
+    'Medicina Deportiva': '#ea580c', // Naranja oscuro
+  }
+
+  return colorMap[specialtyName] || '#6b7280' // Gris por defecto
+}
 
 // ==============================================
 // Componente principal
@@ -58,7 +115,13 @@ export function DoctorsManagement() {
   const [selectedLocation, setSelectedLocation] = useState<string>('')
   const [includeAvailability] = useState(true)
   const [includeSpecialties] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    // Recuperar el tab activo del localStorage al inicializar
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('doctors-management-tab') || 'overview'
+    }
+    return 'overview'
+  })
 
   // Hooks para datos
   const {
@@ -102,6 +165,14 @@ export function DoctorsManagement() {
   const handleLocationFilter = (location: string) => {
     setSelectedLocation(location)
     setCurrentPage(1)
+  }
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    // Guardar el tab activo en localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('doctors-management-tab', tab)
+    }
   }
 
   const handleCreateNew = () => {
@@ -280,14 +351,7 @@ export function DoctorsManagement() {
         ?.map((specialty) => ({
           name: specialty.specialtyName,
           value: specialty.count,
-          color:
-            specialty.specialtyName === 'Cardiología'
-              ? '#ef4444'
-              : specialty.specialtyName === 'Ortopedia'
-              ? '#10b981'
-              : specialty.specialtyName === 'Pediatría'
-              ? '#3b82f6'
-              : '#6b7280',
+          color: getSpecialtyColor(specialty.specialtyName),
         }))
         .filter((item) => item.value > 0) || [] // Solo mostrar especialidades con doctores
 
@@ -423,7 +487,7 @@ export function DoctorsManagement() {
                     <TableHead className='w-1/6'>Estado</TableHead>
                     <TableHead className='w-1/6'>Activar/Desactivar</TableHead>
                     <TableHead className='w-1/6'>Tarifa</TableHead>
-                    <TableHead className='w-[100px] text-center pr-6'>
+                    <TableHead className='w-[120px] text-center pr-6'>
                       Acciones
                     </TableHead>
                   </TableRow>
@@ -447,7 +511,7 @@ export function DoctorsManagement() {
                           </Avatar>
                           <div className='flex flex-col'>
                             <div className='font-medium'>
-                              Dr. {doctor.user.firstName} {doctor.user.lastName}
+                              {doctor.user.firstName} {doctor.user.lastName}
                             </div>
                             <div className='text-sm text-muted-foreground'>
                               {doctor.user.email}
@@ -502,6 +566,7 @@ export function DoctorsManagement() {
                             size='sm'
                             onClick={() => handleEdit(doctor)}
                             className='h-7 w-7 p-0'
+                            title='Editar doctor'
                           >
                             <Edit className='h-3 w-3' />
                           </Button>
@@ -510,6 +575,7 @@ export function DoctorsManagement() {
                             size='sm'
                             onClick={() => handleDelete(doctor)}
                             className='h-7 w-7 p-0'
+                            title='Eliminar doctor'
                           >
                             <Trash2 className='h-3 w-3' />
                           </Button>
@@ -556,6 +622,7 @@ export function DoctorsManagement() {
                         size='sm'
                         onClick={() => handleEdit(doctor)}
                         className='h-8 w-8 p-0'
+                        title='Editar doctor'
                       >
                         <Edit className='h-3 w-3' />
                       </Button>
@@ -564,6 +631,7 @@ export function DoctorsManagement() {
                         size='sm'
                         onClick={() => handleDelete(doctor)}
                         className='h-8 w-8 p-0'
+                        title='Eliminar doctor'
                       >
                         <Trash2 className='h-3 w-3' />
                       </Button>
@@ -657,7 +725,7 @@ export function DoctorsManagement() {
 
   if (showForm) {
     return (
-      <div className='space-y-6'>
+      <div className='space-y-6 pb-4'>
         <div className='flex items-center justify-between'>
           <h1 className='text-3xl font-bold tracking-tight'>
             {selectedDoctor ? 'Editar Doctor' : 'Crear Doctor'}
@@ -750,7 +818,7 @@ export function DoctorsManagement() {
 
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className='space-y-4'
       >
         <TabsList>
@@ -769,7 +837,7 @@ export function DoctorsManagement() {
           </div>
         </TabsContent>
 
-        <TabsContent value='doctors' className='space-y-6'>
+        <TabsContent value='doctors' className='space-y-6 pb-4'>
           {/* Barra de búsqueda y filtros */}
           <Card className='bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200'>
             <CardContent className='p-4'>

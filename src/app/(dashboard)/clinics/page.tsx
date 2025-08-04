@@ -4,7 +4,9 @@ import { ClinicsManagement } from '@/features/clinics/components/clinics-managem
 export default function ClinicsPage() {
   return (
     <AdminOnlyRoute>
-      <ClinicsManagement />
+      <div className='space-y-4 '>
+        <ClinicsManagement />
+      </div>
     </AdminOnlyRoute>
   )
 }

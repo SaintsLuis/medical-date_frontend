@@ -1,5 +1,7 @@
 // src/features/users/types/index.ts
 
+import { z } from 'zod'
+
 // ========================
 // Tipos Principales
 // ========================
@@ -143,7 +145,7 @@ export interface UserFormData {
   email: string
   firstName: string
   lastName: string
-  phoneNumber: string
+  phoneNumber?: string
   isActive: boolean
   otpEnabled: boolean
 }
@@ -180,6 +182,45 @@ export const USER_VALIDATION = {
     maxLength: 20,
   },
 } as const
+
+/**
+ * Schema Zod para validación de formularios de usuario
+ */
+export const userFormSchema = z.object({
+  email: z
+    .string()
+    .min(USER_VALIDATION.email.minLength, {
+      message: `El correo electrónico debe tener al menos ${USER_VALIDATION.email.minLength} caracteres`,
+    })
+    .max(USER_VALIDATION.email.maxLength, {
+      message: `El correo electrónico no puede exceder ${USER_VALIDATION.email.maxLength} caracteres`,
+    })
+    .email('El correo electrónico no es válido'),
+  firstName: z
+    .string()
+    .min(USER_VALIDATION.firstName.minLength, {
+      message: `El nombre debe tener al menos ${USER_VALIDATION.firstName.minLength} caracteres`,
+    })
+    .max(USER_VALIDATION.firstName.maxLength, {
+      message: `El nombre no puede exceder ${USER_VALIDATION.firstName.maxLength} caracteres`,
+    }),
+  lastName: z
+    .string()
+    .min(USER_VALIDATION.lastName.minLength, {
+      message: `El apellido debe tener al menos ${USER_VALIDATION.lastName.minLength} caracteres`,
+    })
+    .max(USER_VALIDATION.lastName.maxLength, {
+      message: `El apellido no puede exceder ${USER_VALIDATION.lastName.maxLength} caracteres`,
+    }),
+  phoneNumber: z
+    .string()
+    .max(USER_VALIDATION.phoneNumber.maxLength, {
+      message: `El teléfono no puede exceder ${USER_VALIDATION.phoneNumber.maxLength} caracteres`,
+    })
+    .optional(),
+  isActive: z.boolean(),
+  otpEnabled: z.boolean(),
+})
 
 // ========================
 // Tipos para Filtros y Búsqueda

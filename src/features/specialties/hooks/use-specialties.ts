@@ -173,14 +173,16 @@ export function useCreateSpecialty() {
       queryClient.invalidateQueries({ queryKey: specialtyKeys.all })
 
       // Mensaje de éxito
-      toast.success('Especialidad creada correctamente', {
-        description: `La especialidad "${newSpecialty.name}" ha sido creada exitosamente.`,
-      })
+      toast.success(
+        `Especialidad creada correctamente.\nLa especialidad "${newSpecialty.name}" ha sido creada exitosamente.`
+      )
     },
     onError: (error: Error) => {
-      toast.error('Error al crear especialidad', {
-        description: error.message || 'Ha ocurrido un error inesperado.',
-      })
+      toast.error(
+        `Error al crear especialidad.\n${
+          error.message || 'Ha ocurrido un error inesperado.'
+        }`
+      )
     },
   })
 }
@@ -215,14 +217,16 @@ export function useUpdateSpecialty() {
       queryClient.invalidateQueries({ queryKey: specialtyKeys.active() })
 
       // Mensaje de éxito
-      toast.success('Especialidad actualizada correctamente', {
-        description: `La especialidad "${updatedSpecialty.name}" ha sido actualizada exitosamente.`,
-      })
+      toast.success(
+        `Especialidad actualizada correctamente.\nLa especialidad "${updatedSpecialty.name}" ha sido actualizada exitosamente.`
+      )
     },
     onError: (error: Error) => {
-      toast.error('Error al actualizar especialidad', {
-        description: error.message || 'Ha ocurrido un error inesperado.',
-      })
+      toast.error(
+        `Error al actualizar especialidad.\n${
+          error.message || 'Ha ocurrido un error inesperado.'
+        }`
+      )
     },
   })
 }
@@ -250,14 +254,16 @@ export function useDeleteSpecialty() {
       queryClient.invalidateQueries({ queryKey: specialtyKeys.active() })
 
       // Mensaje de éxito
-      toast.success('Especialidad eliminada correctamente', {
-        description: 'La especialidad ha sido eliminada del sistema.',
-      })
+      toast.success(
+        'Especialidad eliminada correctamente.\nLa especialidad ha sido eliminada del sistema.'
+      )
     },
     onError: (error: Error) => {
-      toast.error('Error al eliminar especialidad', {
-        description: error.message || 'Ha ocurrido un error inesperado.',
-      })
+      toast.error(
+        `Error al eliminar especialidad.\n${
+          error.message || 'Ha ocurrido un error inesperado.'
+        }`
+      )
     },
   })
 }

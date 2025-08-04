@@ -1,9 +1,13 @@
-// app/(dashboard)/page.tsx
+'use client'
+
 import { Suspense } from 'react'
 import { DoctorDashboardMetrics } from '@/features/dashboard/components/doctor-dashboard-metrics'
 import { DoctorDashboardCharts } from '@/features/dashboard/components/doctor-dashboard-charts'
+import { AdminDashboardMetrics } from '@/features/dashboard/components/admin-dashboard-metrics'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuthStore } from '@/features/auth/store/auth'
+import { UserRole } from '@/types/auth'
 
 // Loading component para Suspense
 function DashboardSkeleton() {
@@ -51,36 +55,104 @@ function DashboardSkeleton() {
   )
 }
 
-// Server Component principal
-export default async function DashboardPage() {
+// Componente principal del dashboard
+export default function DashboardPage() {
+  const { user } = useAuthStore()
+  const userRoles = user?.roles || []
+  const isAdmin = userRoles.includes(UserRole.ADMIN)
+  const isDoctor = userRoles.includes(UserRole.DOCTOR)
+
   return (
     <div className='space-y-8'>
       <div>
         <h1 className='text-3xl font-bold tracking-tight'>
-          Dashboard del Doctor
+          {isAdmin ? 'Dashboard Administrativo' : 'Dashboard del Doctor'}
         </h1>
         <p className='text-muted-foreground'>
-          Métricas y análisis de tu práctica médica
+          {isAdmin
+            ? 'Resumen general del sistema médico'
+            : 'Métricas y análisis de tu práctica médica'}
         </p>
       </div>
 
       {/* Suspense boundaries para diferentes secciones */}
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
+        <DashboardContent isAdmin={isAdmin} isDoctor={isDoctor} />
       </Suspense>
     </div>
   )
 }
 
 // Componente separado para el contenido del dashboard
-function DashboardContent() {
+function DashboardContent({
+  isAdmin,
+  isDoctor,
+}: {
+  isAdmin: boolean
+  isDoctor: boolean
+}) {
+  // Si es admin, mostrar dashboard administrativo
+  if (isAdmin) {
+    return (
+      <div className='space-y-8'>
+        {/* Métricas principales del administrador */}
+        <AdminDashboardMetrics />
+
+        {/* Aquí podrías agregar gráficos administrativos */}
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
+          <Card className='col-span-4'>
+            <CardHeader>
+              <h3 className='text-lg font-semibold'>Análisis del Sistema</h3>
+            </CardHeader>
+            <CardContent>
+              <p className='text-muted-foreground'>
+                Gráficos y análisis detallados del sistema estarán disponibles
+                próximamente.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className='col-span-3'>
+            <CardHeader>
+              <h3 className='text-lg font-semibold'>Actividad Reciente</h3>
+            </CardHeader>
+            <CardContent>
+              <p className='text-muted-foreground'>
+                Actividad reciente del sistema estará disponible próximamente.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Si es doctor, mostrar dashboard del doctor
+  if (isDoctor) {
+    return (
+      <div className='space-y-8'>
+        {/* Métricas principales del doctor */}
+        <DoctorDashboardMetrics />
+
+        {/* Gráficos y tendencias */}
+        <DoctorDashboardCharts />
+      </div>
+    )
+  }
+
+  // Si no tiene rol específico, mostrar mensaje
   return (
     <div className='space-y-8'>
-      {/* Métricas principales del doctor */}
-      <DoctorDashboardMetrics />
-
-      {/* Gráficos y tendencias */}
-      <DoctorDashboardCharts />
+      <Card>
+        <CardHeader>
+          <h3 className='text-lg font-semibold'>Acceso Restringido</h3>
+        </CardHeader>
+        <CardContent>
+          <p className='text-muted-foreground'>
+            No tienes permisos para acceder al dashboard. Contacta al
+            administrador.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

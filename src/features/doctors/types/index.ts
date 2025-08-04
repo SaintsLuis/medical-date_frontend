@@ -188,7 +188,7 @@ export interface DoctorStats {
  */
 export interface DoctorFormData {
   email: string
-  password: string
+  password?: string
   firstName: string
   lastName: string
   license: string
@@ -206,6 +206,7 @@ export interface DoctorFormData {
   awards: string[]
   publications: string[]
   specialtyIds: string[]
+  clinicIds: string[]
 }
 
 /**
@@ -231,6 +232,7 @@ export const DOCTOR_FORM_DEFAULTS: DoctorFormData = {
   awards: [''],
   publications: [''],
   specialtyIds: [],
+  clinicIds: [],
 }
 
 /**

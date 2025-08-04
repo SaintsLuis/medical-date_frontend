@@ -75,6 +75,35 @@ import type { Patient, QueryPatientsParams } from '../types'
 import { formatBloodType, formatGender, getAgeGroup } from '../types'
 import { Label } from '@/components/ui/label'
 
+// ==============================================
+// Función para asignar colores a tipos de sangre
+// ==============================================
+
+const getBloodTypeColor = (bloodType: string): string => {
+  const colorMap: Record<string, string> = {
+    // Tipos de sangre principales - Colores vibrantes
+    A_POSITIVE: '#ef4444', // Rojo
+    A_NEGATIVE: '#dc2626', // Rojo oscuro
+    B_POSITIVE: '#3b82f6', // Azul
+    B_NEGATIVE: '#1d4ed8', // Azul oscuro
+    AB_POSITIVE: '#8b5cf6', // Púrpura
+    AB_NEGATIVE: '#7c3aed', // Púrpura oscuro
+    O_POSITIVE: '#10b981', // Verde esmeralda
+    O_NEGATIVE: '#059669', // Verde esmeralda oscuro
+  }
+
+  return colorMap[bloodType] || '#6b7280' // Gris por defecto
+}
+
+const getGenderColor = (gender: string): string => {
+  const colorMap: Record<string, string> = {
+    MALE: '#3b82f6', // Azul
+    FEMALE: '#ec4899', // Rosa
+  }
+
+  return colorMap[gender] || '#6b7280' // Gris por defecto
+}
+
 const COLORS = [
   '#0088FE',
   '#00C49F',
@@ -85,7 +114,13 @@ const COLORS = [
 ]
 
 export function PatientsManagement() {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    // Recuperar el tab activo del localStorage al inicializar
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('patients-management-tab') || 'overview'
+    }
+    return 'overview'
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [genderFilter, setGenderFilter] = useState<string>('')
   const [bloodTypeFilter, setBloodTypeFilter] = useState<string>('')
@@ -155,6 +190,13 @@ export function PatientsManagement() {
   const handleLocationFilter = (location: string) => {
     setLocationFilter(location)
     setCurrentPage(1)
+  }
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('patients-management-tab', tab)
+    }
   }
 
   const handleEdit = (patient: Patient) => {
@@ -309,10 +351,10 @@ export function PatientsManagement() {
   const GenderDistributionChart = () => {
     if (!stats?.byGender) return null
 
-    const data = stats.byGender.map((item, index) => ({
+    const data = stats.byGender.map((item) => ({
       name: formatGender(item.gender),
       value: item.count,
-      color: COLORS[index % COLORS.length],
+      color: getGenderColor(item.gender),
     }))
 
     return (
@@ -350,10 +392,10 @@ export function PatientsManagement() {
   const BloodTypeDistributionChart = () => {
     if (!stats?.byBloodType) return null
 
-    const data = stats.byBloodType.map((item, index) => ({
+    const data = stats.byBloodType.map((item) => ({
       name: formatBloodType(item.bloodType),
       value: item.count,
-      color: COLORS[index % COLORS.length],
+      color: getBloodTypeColor(item.bloodType),
     }))
 
     return (
@@ -625,7 +667,7 @@ export function PatientsManagement() {
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className='space-y-4'
       >
         <TabsList>

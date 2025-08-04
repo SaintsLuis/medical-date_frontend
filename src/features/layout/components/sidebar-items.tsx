@@ -44,7 +44,7 @@ const DIRECT_ITEMS = [
   {
     name: 'Clínicas',
     href: '/clinics',
-    icon: 'Building2',
+    icon: 'Hospital',
     roles: [UserRole.ADMIN], // Solo Admin
   },
   {
@@ -66,9 +66,9 @@ const DIRECT_ITEMS = [
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
   {
-    name: 'Analíticas',
-    href: '/analytics',
-    icon: 'BarChart3',
+    name: 'Especialidades',
+    href: '/specialties',
+    icon: 'HeartPulse',
     roles: [UserRole.ADMIN], // Solo Admin
   },
   {
@@ -76,12 +76,6 @@ const DIRECT_ITEMS = [
     href: '/settings',
     icon: 'Settings',
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
-  },
-  {
-    name: 'Especialidades',
-    href: '/specialties',
-    icon: 'Pill',
-    roles: [UserRole.ADMIN], // Solo Admin
   },
 ]
 

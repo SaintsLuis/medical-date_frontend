@@ -3,6 +3,72 @@
  * Following the same pattern as specialties, doctors, and patients modules
  */
 
+import { z } from 'zod'
+
+// ==============================================
+// Zod Validation Schemas
+// ==============================================
+
+export const workingDaySchema = z.object({
+  start: z.string().min(1, 'La hora de inicio es obligatoria'),
+  end: z.string().min(1, 'La hora de fin es obligatoria'),
+  isOpen: z.boolean(),
+})
+
+export const weeklyScheduleSchema = z.object({
+  monday: workingDaySchema,
+  tuesday: workingDaySchema,
+  wednesday: workingDaySchema,
+  thursday: workingDaySchema,
+  friday: workingDaySchema,
+  saturday: workingDaySchema,
+  sunday: workingDaySchema,
+})
+
+export const coordinatesSchema = z.object({
+  lat: z.number().min(-90).max(90, 'Latitud debe estar entre -90 y 90'),
+  lng: z.number().min(-180).max(180, 'Longitud debe estar entre -180 y 180'),
+})
+
+export const createClinicSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede exceder 100 caracteres'),
+  address: z
+    .string()
+    .min(10, 'La dirección debe tener al menos 10 caracteres')
+    .max(200, 'La dirección no puede exceder 200 caracteres'),
+  phone: z
+    .string()
+    .min(10, 'El teléfono debe tener al menos 10 dígitos')
+    .max(15, 'El teléfono no puede exceder 15 dígitos')
+    .regex(/^[\d\s\-\+\(\)]+$/, 'Formato de teléfono inválido'),
+  email: z
+    .string()
+    .email('Formato de email inválido')
+    .max(100, 'El email no puede exceder 100 caracteres'),
+  coordinates: coordinatesSchema,
+  description: z
+    .string()
+    .max(500, 'La descripción no puede exceder 500 caracteres')
+    .optional(),
+  website: z
+    .string()
+    .min(1, 'El sitio web es obligatorio')
+    .url('Formato de URL inválido')
+    .max(200, 'La URL no puede exceder 200 caracteres'),
+  workingHours: weeklyScheduleSchema,
+  services: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+  isActive: z.boolean().default(true),
+})
+
+export const updateClinicSchema = createClinicSchema.partial()
+
+export type CreateClinicFormData = z.infer<typeof createClinicSchema>
+export type UpdateClinicFormData = z.infer<typeof updateClinicSchema>
+
 // ==============================================
 // Core Clinic Interface
 // ==============================================
@@ -256,7 +322,7 @@ export const CLINIC_FORM_DEFAULTS: ClinicFormData = {
     lng: 0,
   },
   description: '',
-  website: '',
+  website: 'https://www.clinica.com',
   workingHours: {
     monday: { start: '08:00', end: '17:00', isOpen: true },
     tuesday: { start: '08:00', end: '17:00', isOpen: true },
@@ -266,7 +332,7 @@ export const CLINIC_FORM_DEFAULTS: ClinicFormData = {
     saturday: { start: '09:00', end: '13:00', isOpen: false },
     sunday: { start: '09:00', end: '13:00', isOpen: false },
   },
-  services: [],
+  services: ['Medicina General'],
   amenities: [],
   isActive: true,
 }
