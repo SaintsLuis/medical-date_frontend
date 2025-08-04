@@ -3,13 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -37,7 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,21 +63,9 @@ import {
   XCircle,
 } from 'lucide-react'
 import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
-import {
   useClinics,
   useClinicStats,
-  useClinicManagement,
+  useClinicActions,
 } from '../hooks/use-clinics'
 import { ClinicForm } from './clinic-form'
 import { ClinicsSkeletion } from './clinics-skeleton'
@@ -107,18 +89,13 @@ export function ClinicsManagement() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(12)
 
-  // Hook de gestión unificado
-  const {
-    selectedClinic,
-    setSelectedClinic,
-    isFormOpen,
-    setIsFormOpen,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    isLoading: managementLoading,
-    handleDelete,
-    handleToggleStatus,
-  } = useClinicManagement()
+  // Estados de gestión
+  const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  // Hook de acciones
+  const { deleteClinic, isLoading: managementLoading } = useClinicActions()
 
   // Estados adicionales
   const [viewDetailsClinic, setViewDetailsClinic] = useState<Clinic | null>(
@@ -200,24 +177,17 @@ export function ClinicsManagement() {
     if (!selectedClinic) return
 
     try {
-      const result = await handleDelete(selectedClinic.id)
-      if (!result.success) {
-        console.error('Error al eliminar clínica:', result.error)
-      }
+      await deleteClinic.mutateAsync(selectedClinic.id)
+      setIsDeleteDialogOpen(false)
+      setSelectedClinic(null)
     } catch (error) {
       console.error('Error al eliminar clínica:', error)
     }
   }
 
   const handleToggleStatusClick = async (clinic: Clinic) => {
-    try {
-      const result = await handleToggleStatus(clinic.id)
-      if (!result.success) {
-        console.error('Error al cambiar estado:', result.error)
-      }
-    } catch (error) {
-      console.error('Error al cambiar estado:', error)
-    }
+    // TODO: Implementar toggle de estado
+    console.log('Toggle status for clinic:', clinic.id)
   }
 
   const handleViewDetails = (clinic: Clinic) => {
@@ -229,11 +199,6 @@ export function ClinicsManagement() {
     setIsFormOpen(false)
     setSelectedClinic(null)
     refetchClinics()
-  }
-
-  const handleFormCancel = () => {
-    setIsFormOpen(false)
-    setSelectedClinic(null)
   }
 
   // ==============================================
@@ -285,7 +250,7 @@ export function ClinicsManagement() {
       )
     }
 
-    if (statsError || !statsData) {
+    if (statsError || !statsData?.data) {
       return (
         <Alert variant='destructive'>
           <AlertCircle className='h-4 w-4' />
@@ -303,6 +268,8 @@ export function ClinicsManagement() {
       )
     }
 
+    const stats = statsData.data
+
     return (
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
         <Card>
@@ -313,9 +280,9 @@ export function ClinicsManagement() {
             <Building2 className='h-4 w-4 text-muted-foreground' />
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>{statsData.total}</div>
+            <div className='text-2xl font-bold'>{stats.total}</div>
             <p className='text-xs text-muted-foreground'>
-              {statsData.active} activas
+              {stats.active} activas
             </p>
           </CardContent>
         </Card>
@@ -328,10 +295,9 @@ export function ClinicsManagement() {
             <CheckCircle className='h-4 w-4 text-muted-foreground' />
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>{statsData.active}</div>
+            <div className='text-2xl font-bold'>{stats.active}</div>
             <p className='text-xs text-muted-foreground'>
-              {((statsData.active / statsData.total) * 100).toFixed(1)}% del
-              total
+              {((stats.active / stats.total) * 100).toFixed(1)}% del total
             </p>
           </CardContent>
         </Card>
@@ -344,126 +310,16 @@ export function ClinicsManagement() {
             <Users className='h-4 w-4 text-muted-foreground' />
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold'>{statsData.totalDoctors}</div>
+            <div className='text-2xl font-bold'>{stats.totalDoctors}</div>
             <p className='text-xs text-muted-foreground'>
-              {statsData.totalDoctors > 0
-                ? (statsData.totalDoctors / statsData.active).toFixed(1)
+              {stats.totalDoctors > 0
+                ? (stats.totalDoctors / stats.active).toFixed(1)
                 : '0'}{' '}
               promedio por clínica
             </p>
           </CardContent>
         </Card>
       </div>
-    )
-  }
-
-  const LocationDistributionChart = () => {
-    if (!statsData?.byLocation || statsData.byLocation.length === 0) {
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribución por Ubicación</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-muted-foreground text-center py-8'>
-              No hay datos de ubicación disponibles
-            </p>
-          </CardContent>
-        </Card>
-      )
-    }
-
-    const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1']
-
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Distribución por Ubicación</CardTitle>
-          <CardDescription>Clínicas por ciudad o región</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width='100%' height={300}>
-            <PieChart>
-              <Pie
-                data={statsData.byLocation}
-                cx='50%'
-                cy='50%'
-                labelLine={false}
-                label={({ city, count, percent }) =>
-                  `${city}: ${count} (${((percent || 0) * 100).toFixed(0)}%)`
-                }
-                outerRadius={80}
-                fill='#8884d8'
-                dataKey='count'
-              >
-                {statsData.byLocation.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const ServicesDistributionChart = () => {
-    if (!statsData?.byServices || statsData.byServices.length === 0) {
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Servicios Más Comunes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-muted-foreground text-center py-8'>
-              No hay datos de servicios disponibles
-            </p>
-          </CardContent>
-        </Card>
-      )
-    }
-
-    // Tomar solo los primeros 8 servicios más comunes
-    const topServices = statsData.byServices.slice(0, 8)
-
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Servicios Más Comunes</CardTitle>
-          <CardDescription>
-            Top 8 servicios ofrecidos por las clínicas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width='100%' height={300}>
-            <BarChart
-              data={topServices}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray='3 3' />
-              <XAxis
-                dataKey='service'
-                angle={-45}
-                textAnchor='end'
-                height={100}
-                fontSize={12}
-              />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey='count' fill='#8884d8' />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
     )
   }
 
@@ -490,7 +346,10 @@ export function ClinicsManagement() {
       )
     }
 
-    if (!clinicsResponse?.data || clinicsResponse.data.length === 0) {
+    if (
+      !clinicsResponse?.data?.data ||
+      clinicsResponse.data.data.length === 0
+    ) {
       return (
         <Card>
           <CardContent className='flex flex-col items-center justify-center py-16'>
@@ -515,7 +374,7 @@ export function ClinicsManagement() {
 
     return (
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-        {clinicsResponse.data.map((clinic) => {
+        {clinicsResponse.data.data.map((clinic: Clinic) => {
           const isOpen = clinic.workingHours
             ? isClinicOpen(clinic.workingHours)
             : false
@@ -913,118 +772,102 @@ export function ClinicsManagement() {
         </div>
       </div>
 
-      {/* Tabs principales */}
-      <Tabs defaultValue='overview' className='space-y-4'>
-        <TabsList>
-          <TabsTrigger value='overview'>Resumen</TabsTrigger>
-          <TabsTrigger value='clinics'>Clínicas</TabsTrigger>
-        </TabsList>
+      {/* Contenido principal */}
+      <div className='space-y-6 pb-8'>
+        {/* Resumen */}
+        <div className='space-y-4'>
+          <h2 className='text-xl font-semibold'>Resumen</h2>
+          <StatsCards />
+        </div>
 
-        <TabsContent value='overview'>
-          <div className='space-y-6'>
-            <StatsCards />
-            <div className='grid gap-4 md:grid-cols-2'>
-              <LocationDistributionChart />
-              <ServicesDistributionChart />
+        {/* Clínicas */}
+        <div className='space-y-4'>
+          <h2 className='text-xl font-semibold'>Clínicas</h2>
+
+          {/* Filtros */}
+          <div className='flex flex-col sm:flex-row gap-4'>
+            <div className='relative flex-1'>
+              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+              <Input
+                placeholder='Buscar clínicas...'
+                className='pl-10'
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
             </div>
+            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='Estado' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todos</SelectItem>
+                <SelectItem value='active'>Activas</SelectItem>
+                <SelectItem value='inactive'>Inactivas</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder='Filtrar por ubicación...'
+              className='w-48'
+              value={locationFilter}
+              onChange={(e) => handleLocationFilter(e.target.value)}
+            />
+            <Input
+              placeholder='Filtrar por servicio...'
+              className='w-48'
+              value={serviceFilter}
+              onChange={(e) => handleServiceFilter(e.target.value)}
+            />
           </div>
-        </TabsContent>
 
-        <TabsContent value='clinics'>
-          <div className='space-y-4'>
-            {/* Filtros */}
-            <div className='flex flex-col sm:flex-row gap-4'>
-              <div className='relative flex-1'>
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                <Input
-                  placeholder='Buscar clínicas...'
-                  className='pl-10'
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={handleStatusFilter}>
-                <SelectTrigger className='w-40'>
-                  <SelectValue placeholder='Estado' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Todos</SelectItem>
-                  <SelectItem value='active'>Activas</SelectItem>
-                  <SelectItem value='inactive'>Inactivas</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder='Filtrar por ubicación...'
-                className='w-48'
-                value={locationFilter}
-                onChange={(e) => handleLocationFilter(e.target.value)}
-              />
-              <Input
-                placeholder='Filtrar por servicio...'
-                className='w-48'
-                value={serviceFilter}
-                onChange={(e) => handleServiceFilter(e.target.value)}
-              />
-            </div>
+          {/* Grid de clínicas */}
+          <ClinicsGrid />
 
-            {/* Grid de clínicas */}
-            <ClinicsGrid />
-
-            {/* Paginación */}
-            {clinicsResponse && clinicsResponse.meta.totalPages > 1 && (
+          {/* Paginación */}
+          {clinicsResponse?.data &&
+            clinicsResponse.data.meta.totalPages > 1 && (
               <div className='flex items-center justify-between'>
                 <p className='text-sm text-muted-foreground'>
                   Mostrando {(currentPage - 1) * pageSize + 1} a{' '}
-                  {Math.min(currentPage * pageSize, clinicsResponse.meta.total)}{' '}
-                  de {clinicsResponse.meta.total} clínicas
+                  {Math.min(
+                    currentPage * pageSize,
+                    clinicsResponse.data.meta.total
+                  )}{' '}
+                  de {clinicsResponse.data.meta.total} clínicas
                 </p>
                 <div className='flex items-center space-x-2'>
                   <Button
                     variant='outline'
                     size='sm'
                     onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={!clinicsResponse.meta.hasPreviousPage}
+                    disabled={!clinicsResponse.data.meta.hasPreviousPage}
                   >
                     Anterior
                   </Button>
                   <span className='text-sm'>
-                    Página {currentPage} de {clinicsResponse.meta.totalPages}
+                    Página {currentPage} de{' '}
+                    {clinicsResponse.data.meta.totalPages}
                   </span>
                   <Button
                     variant='outline'
                     size='sm'
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={!clinicsResponse.meta.hasNextPage}
+                    disabled={!clinicsResponse.data.meta.hasNextPage}
                   >
                     Siguiente
                   </Button>
                 </div>
               </div>
             )}
-          </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Dialogs */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedClinic ? 'Editar Clínica' : 'Crear Nueva Clínica'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedClinic
-                ? 'Actualiza la información de la clínica'
-                : 'Completa la información para crear una nueva clínica'}
-            </DialogDescription>
-          </DialogHeader>
-          <ClinicForm
-            clinic={selectedClinic}
-            onSuccess={handleFormSuccess}
-            onCancel={handleFormCancel}
-          />
-        </DialogContent>
-      </Dialog>
+      <ClinicForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        clinic={selectedClinic}
+        onSuccess={handleFormSuccess}
+      />
 
       <ClinicDetailsDialog />
 

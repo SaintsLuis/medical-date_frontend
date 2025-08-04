@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,7 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import {
   Stethoscope,
@@ -34,22 +37,101 @@ import {
   DollarSign,
   Plus,
   X,
-  AlertCircle,
   Loader2,
+  Calendar,
 } from 'lucide-react'
 import { useAllActiveSpecialties } from '@/features/specialties/hooks/use-specialties'
+import { useAllActiveClinics } from '@/features/clinics'
 import type {
   Doctor,
-  DoctorFormData,
   CreateDoctorData,
   UpdateDoctorData,
+  DoctorFormData,
 } from '../types'
-import { DOCTOR_FORM_DEFAULTS, DOCTOR_VALIDATION } from '../types'
-import {
-  createDoctorAction,
-  updateDoctorAction,
-  getDoctorById,
-} from '../actions/doctor-actions'
+import { createDoctorAction } from '../actions/doctor-actions'
+import { useUpdateDoctor } from '../hooks/use-doctors'
+
+// ==============================================
+// Schema de Validación con Zod
+// ==============================================
+
+const doctorFormSchema = z.object({
+  email: z
+    .string()
+    .email('El email no es válido')
+    .min(5, 'El email debe tener al menos 5 caracteres')
+    .max(255, 'El email no puede exceder 255 caracteres'),
+  password: z
+    .string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .optional()
+    .or(z.literal('')),
+  firstName: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres'),
+  lastName: z
+    .string()
+    .min(2, 'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede exceder 50 caracteres'),
+  license: z
+    .string()
+    .min(3, 'La licencia debe tener al menos 3 caracteres')
+    .max(50, 'La licencia no puede exceder 50 caracteres'),
+  phone: z.string().min(1, 'El teléfono es requerido'),
+  address: z.string().min(1, 'La dirección es requerida'),
+  bio: z
+    .string()
+    .min(1, 'La biografía es requerida')
+    .max(1000, 'La biografía no puede exceder 1000 caracteres'),
+  consultationFee: z
+    .number()
+    .min(0, 'La tarifa debe ser al menos 0')
+    .max(10000, 'La tarifa no puede exceder 10,000'),
+  experience: z
+    .number()
+    .min(0, 'La experiencia debe ser al menos 0 años')
+    .max(50, 'La experiencia no puede exceder 50 años'),
+  timeZone: z.string().min(1, 'La zona horaria es requerida'),
+  publicEmail: z.string(),
+  publicPhone: z.string(),
+  education: z.array(z.string()),
+  languages: z.array(z.string()),
+  certifications: z.array(z.string()),
+  awards: z.array(z.string()),
+  publications: z.array(z.string()),
+  specialtyIds: z
+    .array(z.string())
+    .min(1, 'Debe seleccionar al menos una especialidad'),
+  clinicIds: z.array(z.string()),
+}) satisfies z.ZodType<DoctorFormData>
+
+// ==============================================
+// Valores por Defecto
+// ==============================================
+
+const defaultValues: DoctorFormData = {
+  email: '',
+  password: '',
+  firstName: '',
+  lastName: '',
+  license: '',
+  phone: '',
+  address: '',
+  bio: '',
+  consultationFee: 0,
+  experience: 0,
+  timeZone: 'America/Santo_Domingo',
+  publicEmail: '',
+  publicPhone: '',
+  education: ['Universidad Nacional - Medicina'],
+  languages: ['Español'],
+  certifications: ['Certificación del Colegio Médico'],
+  awards: ['Premio a la Excelencia Médica'],
+  publications: ['Artículo en Revista Médica'],
+  specialtyIds: [],
+  clinicIds: [],
+}
 
 // ==============================================
 // Interfaces
@@ -57,7 +139,7 @@ import {
 
 interface DoctorFormProps {
   doctor?: Doctor | null
-  onSuccess?: (doctor: Doctor) => void
+  onSuccess?: () => void
   onCancel?: () => void
   title?: string
   description?: string
@@ -67,6 +149,16 @@ interface DoctorFormProps {
 // Componente Principal
 // ==============================================
 
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Domingo' },
+  { value: 1, label: 'Lunes' },
+  { value: 2, label: 'Martes' },
+  { value: 3, label: 'Miércoles' },
+  { value: 4, label: 'Jueves' },
+  { value: 5, label: 'Viernes' },
+  { value: 6, label: 'Sábado' },
+]
+
 export function DoctorForm({
   doctor,
   onSuccess,
@@ -74,13 +166,96 @@ export function DoctorForm({
   title = 'Crear Doctor',
   description = 'Completa la información para crear un nuevo doctor',
 }: DoctorFormProps) {
-  const [formData, setFormData] = useState<DoctorFormData>(DOCTOR_FORM_DEFAULTS)
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const updateDoctorMutation = useUpdateDoctor()
+  const { data: specialties } = useAllActiveSpecialties()
+  const { data: clinics } = useAllActiveClinics()
 
-  // Obtener especialidades disponibles
-  const { data: specialties, isLoading: isLoadingSpecialties } =
-    useAllActiveSpecialties()
+  // ==============================================
+  // React Hook Form Setup
+  // ==============================================
+
+  const form = useForm<DoctorFormData>({
+    resolver: zodResolver(doctorFormSchema),
+    defaultValues,
+    mode: 'onBlur',
+  })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue,
+  } = form
+
+  const [education, setEducation] = useState<string[]>([
+    'Universidad Nacional - Medicina',
+  ])
+  const [languages, setLanguages] = useState<string[]>(['Español'])
+  const [certifications, setCertifications] = useState<string[]>([
+    'Certificación del Colegio Médico',
+  ])
+  const [awards, setAwards] = useState<string[]>([
+    'Premio a la Excelencia Médica',
+  ])
+  const [publications, setPublications] = useState<string[]>([
+    'Artículo en Revista Médica',
+  ])
+
+  // Estado para disponibilidad
+  const [availability, setAvailability] = useState(() => {
+    if (
+      doctor?.availability &&
+      Array.isArray(doctor.availability) &&
+      doctor.availability.length > 0
+    ) {
+      return DAYS_OF_WEEK.map((day) => {
+        const existing = doctor.availability?.find(
+          (av) => av.dayOfWeek === day.value
+        )
+        return {
+          dayOfWeek: day.value,
+          startTime:
+            existing?.startTime ||
+            (day.value === 0 ? '00:00' : day.value === 6 ? '00:00' : '09:00'),
+          endTime:
+            existing?.endTime ||
+            (day.value === 0 ? '00:00' : day.value === 6 ? '00:00' : '17:00'),
+          isAvailable:
+            existing?.isAvailable ?? (day.value !== 0 && day.value !== 6), // Domingo y Sábado no disponibles por defecto
+        }
+      })
+    }
+    return DAYS_OF_WEEK.map((day) => ({
+      dayOfWeek: day.value,
+      startTime: day.value === 0 || day.value === 6 ? '00:00' : '09:00',
+      endTime: day.value === 0 || day.value === 6 ? '00:00' : '17:00',
+      isAvailable: day.value !== 0 && day.value !== 6, // Solo Lunes a Viernes disponibles por defecto (respetando sábado como día de reposo)
+    }))
+  })
+
+  // Sincronizar estados locales con el formulario
+  useEffect(() => {
+    setValue('education', education)
+  }, [education, setValue])
+
+  useEffect(() => {
+    setValue('languages', languages)
+  }, [languages, setValue])
+
+  useEffect(() => {
+    setValue('certifications', certifications)
+  }, [certifications, setValue])
+
+  useEffect(() => {
+    setValue('awards', awards)
+  }, [awards, setValue])
+
+  useEffect(() => {
+    setValue('publications', publications)
+  }, [publications, setValue])
 
   // ==============================================
   // Efectos
@@ -88,10 +263,10 @@ export function DoctorForm({
 
   useEffect(() => {
     if (doctor) {
-      // Si es edición, llenar el formulario con los datos del doctor
-      setFormData({
+      // Llenar el formulario con los datos del doctor
+      reset({
         email: doctor.user.email,
-        password: '', // No mostrar contraseña en edición
+        password: '',
         firstName: doctor.user.firstName,
         lastName: doctor.user.lastName,
         license: doctor.license,
@@ -99,149 +274,45 @@ export function DoctorForm({
         address: doctor.address,
         bio: doctor.bio,
         consultationFee: doctor.consultationFee,
-        education: doctor.education.length > 0 ? doctor.education : [''],
         experience: doctor.experience,
-        languages: doctor.languages.length > 0 ? doctor.languages : ['Español'],
         timeZone: doctor.timeZone,
         publicEmail: doctor.publicEmail || '',
         publicPhone: doctor.publicPhone || '',
-        certifications: doctor.certifications?.length
-          ? doctor.certifications
-          : [''],
-        awards: doctor.awards?.length ? doctor.awards : [''],
-        publications: doctor.publications?.length ? doctor.publications : [''],
         specialtyIds: doctor.specialties.map((s) => s.id),
+        clinicIds: doctor.clinics?.map((c) => c.clinic.id) || [],
       })
+
+      // Inicializar estados locales
+      setEducation(
+        doctor.education.length > 0
+          ? doctor.education
+          : ['Universidad Nacional - Medicina']
+      )
+      setLanguages(doctor.languages.length > 0 ? doctor.languages : ['Español'])
+      setCertifications(
+        doctor.certifications && doctor.certifications.length > 0
+          ? doctor.certifications
+          : ['Certificación del Colegio Médico']
+      )
+      setAwards(
+        doctor.awards && doctor.awards.length > 0
+          ? doctor.awards
+          : ['Premio a la Excelencia Médica']
+      )
+      setPublications(
+        doctor.publications && doctor.publications.length > 0
+          ? doctor.publications
+          : ['Artículo en Revista Médica']
+      )
     }
-  }, [doctor])
-
-  // ==============================================
-  // Validación
-  // ==============================================
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    // Validar email
-    if (!formData.email) {
-      newErrors.email = 'El email es requerido'
-    } else if (formData.email.length < DOCTOR_VALIDATION.email.minLength) {
-      newErrors.email = `El email debe tener al menos ${DOCTOR_VALIDATION.email.minLength} caracteres`
-    } else if (formData.email.length > DOCTOR_VALIDATION.email.maxLength) {
-      newErrors.email = `El email no puede exceder ${DOCTOR_VALIDATION.email.maxLength} caracteres`
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'El email no es válido'
-    }
-
-    // Validar contraseña (solo para creación)
-    if (!doctor && !formData.password) {
-      newErrors.password = 'La contraseña es requerida'
-    } else if (!doctor && formData.password.length < 8) {
-      newErrors.password = 'La contraseña debe tener al menos 8 caracteres'
-    }
-
-    // Validar nombre
-    if (!formData.firstName) {
-      newErrors.firstName = 'El nombre es requerido'
-    } else if (
-      formData.firstName.length < DOCTOR_VALIDATION.firstName.minLength
-    ) {
-      newErrors.firstName = `El nombre debe tener al menos ${DOCTOR_VALIDATION.firstName.minLength} caracteres`
-    }
-
-    // Validar apellido
-    if (!formData.lastName) {
-      newErrors.lastName = 'El apellido es requerido'
-    } else if (
-      formData.lastName.length < DOCTOR_VALIDATION.lastName.minLength
-    ) {
-      newErrors.lastName = `El apellido debe tener al menos ${DOCTOR_VALIDATION.lastName.minLength} caracteres`
-    }
-
-    // Validar licencia
-    if (!formData.license) {
-      newErrors.license = 'La licencia es requerida'
-    } else if (formData.license.length < DOCTOR_VALIDATION.license.minLength) {
-      newErrors.license = `La licencia debe tener al menos ${DOCTOR_VALIDATION.license.minLength} caracteres`
-    }
-
-    // Validar teléfono
-    if (!formData.phone) {
-      newErrors.phone = 'El teléfono es requerido'
-    }
-
-    // Validar dirección
-    if (!formData.address) {
-      newErrors.address = 'La dirección es requerida'
-    }
-
-    // Validar bio
-    if (!formData.bio) {
-      newErrors.bio = 'La biografía es requerida'
-    } else if (formData.bio.length > DOCTOR_VALIDATION.bio.maxLength) {
-      newErrors.bio = `La biografía no puede exceder ${DOCTOR_VALIDATION.bio.maxLength} caracteres`
-    }
-
-    // Validar tarifa de consulta
-    if (formData.consultationFee < DOCTOR_VALIDATION.consultationFee.min) {
-      newErrors.consultationFee = `La tarifa debe ser al menos ${DOCTOR_VALIDATION.consultationFee.min}`
-    }
-
-    // Validar experiencia
-    if (formData.experience < DOCTOR_VALIDATION.experience.min) {
-      newErrors.experience = `La experiencia debe ser al menos ${DOCTOR_VALIDATION.experience.min} años`
-    }
-
-    // Validar especialidades
-    if (formData.specialtyIds.length === 0) {
-      newErrors.specialtyIds = 'Debe seleccionar al menos una especialidad'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+  }, [doctor, reset])
 
   // ==============================================
   // Handlers
   // ==============================================
 
-  const handleInputChange = (
-    field: string,
-    value: string | number | boolean
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-
-    // Limpiar error del campo si existe
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }))
-    }
-  }
-
-  const handleArrayInputChange = (
-    field: keyof DoctorFormData,
-    index: number,
-    value: string
-  ) => {
-    const array = [...(formData[field] as string[])]
-    array[index] = value
-    setFormData((prev) => ({ ...prev, [field]: array }))
-  }
-
-  const addArrayItem = (field: keyof DoctorFormData) => {
-    const array = [...(formData[field] as string[]), '']
-    setFormData((prev) => ({ ...prev, [field]: array }))
-  }
-
-  const removeArrayItem = (field: keyof DoctorFormData, index: number) => {
-    const array = (formData[field] as string[]).filter((_, i) => i !== index)
-    if (array.length === 0) {
-      array.push('')
-    }
-    setFormData((prev) => ({ ...prev, [field]: array }))
-  }
-
   const handleSpecialtyToggle = (specialtyId: string) => {
-    const currentSpecialties = [...formData.specialtyIds]
+    const currentSpecialties = watch('specialtyIds')
     const index = currentSpecialties.indexOf(specialtyId)
 
     if (index > -1) {
@@ -250,124 +321,126 @@ export function DoctorForm({
       currentSpecialties.push(specialtyId)
     }
 
-    setFormData((prev) => ({ ...prev, specialtyIds: currentSpecialties }))
-
-    if (errors.specialtyIds) {
-      setErrors((prev) => ({ ...prev, specialtyIds: '' }))
-    }
+    setValue('specialtyIds', currentSpecialties)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      return
+  const handleDayToggle = (dayIndex: number, checked: boolean) => {
+    const updatedAvailability = [...availability]
+    updatedAvailability[dayIndex] = {
+      ...updatedAvailability[dayIndex],
+      isAvailable: checked,
+      startTime: checked
+        ? dayIndex === 0 || dayIndex === 6
+          ? '00:00'
+          : '09:00'
+        : '00:00',
+      endTime: checked
+        ? dayIndex === 0 || dayIndex === 6
+          ? '00:00'
+          : '17:00'
+        : '00:00',
     }
+    setAvailability(updatedAvailability)
+  }
 
+  const handleTimeChange = (
+    dayIndex: number,
+    field: 'startTime' | 'endTime',
+    value: string
+  ) => {
+    const updatedAvailability = [...availability]
+    updatedAvailability[dayIndex] = {
+      ...updatedAvailability[dayIndex],
+      [field]: value,
+    }
+    setAvailability(updatedAvailability)
+  }
+
+  const onSubmit = async (data: DoctorFormData) => {
     setIsSubmitting(true)
-
     try {
       if (doctor) {
         // Actualizar doctor existente
         const updateData: UpdateDoctorData = {
-          phone: formData.phone,
-          address: formData.address,
-          bio: formData.bio,
-          consultationFee: formData.consultationFee,
-          education: formData.education,
-          experience: formData.experience,
-          languages: formData.languages,
-          timeZone: formData.timeZone,
-          specialtyIds: formData.specialtyIds,
+          ...data,
         }
 
-        console.log('🔄 Updating doctor:', updateData)
-        const result = await updateDoctorAction(doctor.id, updateData)
+        const result = await updateDoctorMutation.mutateAsync({
+          id: doctor.id,
+          data: updateData,
+        })
 
         if (result.success && result.data) {
-          onSuccess?.(result.data)
+          toast.success('Doctor actualizado exitosamente')
+          onSuccess?.()
         } else {
-          throw new Error(result.error || 'Error al actualizar doctor')
+          toast.error(result.error || 'Error al actualizar el doctor')
         }
       } else {
-        // Crear nuevo doctor
+        // Crear nuevo doctor (la disponibilidad se maneja automáticamente en el backend)
         const createData: CreateDoctorData = {
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          license: formData.license,
-          phone: formData.phone,
-          address: formData.address,
-          bio: formData.bio,
-          consultationFee: formData.consultationFee,
-          education: formData.education,
-          experience: formData.experience,
-          languages: formData.languages,
-          timeZone: formData.timeZone,
+          email: data.email,
+          password: data.password!,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          license: data.license,
+          phone: data.phone,
+          address: data.address,
+          bio: data.bio,
+          consultationFee: data.consultationFee,
+          education: education,
+          experience: data.experience,
+          languages: languages,
+          timeZone: data.timeZone,
         }
 
-        console.log('🆕 Creating doctor with data:', createData)
         const result = await createDoctorAction(createData)
 
-        console.log('📋 Create doctor result:', result)
-
         if (result.success && result.data) {
-          // Si la creación fue exitosa, asignar especialidades usando la acción de actualizar
-          if (formData.specialtyIds.length > 0) {
-            console.log(
-              '🏷️ Assigning specialties via update action:',
-              formData.specialtyIds
-            )
-            await updateDoctorAction(result.data.doctorId, {
-              specialtyIds: formData.specialtyIds,
-            })
-          }
+          toast.success('Doctor creado exitosamente')
 
-          // Obtener el doctor creado para pasarlo al callback
-          const doctorResult = await getDoctorById(result.data.doctorId)
-          if (doctorResult.success && doctorResult.data) {
-            onSuccess?.(doctorResult.data)
-          } else {
-            // Fallback: crear un objeto doctor básico con los datos del formulario
-            const fallbackDoctor: Doctor = {
-              id: result.data.doctorId,
-              user: {
-                id: '',
-                email: formData.email,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                phoneNumber: formData.phone,
-                isActive: true,
-              },
-              license: formData.license,
-              phone: formData.phone,
-              address: formData.address,
-              bio: formData.bio,
-              consultationFee: formData.consultationFee,
-              education: formData.education,
-              experience: formData.experience,
-              languages: formData.languages,
-              timeZone: formData.timeZone,
-              specialties: [],
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-            onSuccess?.(fallbackDoctor)
-          }
+          // Limpiar todos los campos del formulario
+          reset()
+
+          // Limpiar estados locales
+          setEducation([''])
+          setLanguages([''])
+          setCertifications([''])
+          setAwards([''])
+          setPublications([''])
+
+          // Resetear disponibilidad a valores por defecto
+          setAvailability(
+            DAYS_OF_WEEK.map((day) => ({
+              dayOfWeek: day.value,
+              startTime: day.value === 0 || day.value === 6 ? '00:00' : '09:00',
+              endTime: day.value === 0 || day.value === 6 ? '00:00' : '17:00',
+              isAvailable: day.value !== 0 && day.value !== 6, // Solo Lunes a Viernes disponibles por defecto
+            }))
+          )
+
+          // Limpiar especialidades seleccionadas
+          setValue('specialtyIds', [])
+
+          // Limpiar clínicas seleccionadas
+          setValue('clinicIds', [])
+
+          // Llamar onSuccess sin pasar datos por ahora
+          onSuccess?.()
         } else {
-          throw new Error(result.error || 'Error al crear doctor')
+          toast.error(result.error || 'Error al crear el doctor')
         }
       }
     } catch (error) {
-      console.error('❌ Submit error:', error)
-      // Aquí podrías mostrar un toast o alert con el error
+      console.error('Error submitting form:', error)
+      toast.error('Error inesperado')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleCancel = () => {
+    // Simplemente llamar onCancel si existe
     onCancel?.()
   }
 
@@ -376,7 +449,8 @@ export function DoctorForm({
   // ==============================================
 
   const renderArrayInput = (
-    field: keyof DoctorFormData,
+    items: string[],
+    setItems: React.Dispatch<React.SetStateAction<string[]>>,
     label: string,
     placeholder: string,
     icon: React.ReactNode
@@ -386,22 +460,25 @@ export function DoctorForm({
         {icon}
         {label}
       </Label>
-      {(formData[field] as string[]).map((item, index) => (
+      {items.map((item, index) => (
         <div key={index} className='flex gap-2'>
-          <Input
-            placeholder={placeholder}
-            value={item}
-            onChange={(e) =>
-              handleArrayInputChange(field, index, e.target.value)
-            }
-            className='flex-1'
-          />
-          {(formData[field] as string[]).length > 1 && (
+          <div className='flex-1'>
+            <Input
+              placeholder={placeholder}
+              value={item}
+              onChange={(e) => {
+                const newItems = [...items]
+                newItems[index] = e.target.value
+                setItems(newItems)
+              }}
+            />
+          </div>
+          {items.length > 1 && (
             <Button
               type='button'
               variant='outline'
               size='sm'
-              onClick={() => removeArrayItem(field, index)}
+              onClick={() => setItems(items.filter((_, i) => i !== index))}
               className='px-2'
             >
               <X className='h-4 w-4' />
@@ -413,7 +490,7 @@ export function DoctorForm({
         type='button'
         variant='outline'
         size='sm'
-        onClick={() => addArrayItem(field)}
+        onClick={() => setItems([...items, ''])}
         className='w-full'
       >
         <Plus className='h-4 w-4 mr-2' />
@@ -428,35 +505,145 @@ export function DoctorForm({
         <Stethoscope className='h-4 w-4' />
         Especialidades
       </Label>
-      {errors.specialtyIds && (
-        <Alert variant='destructive'>
-          <AlertCircle className='h-4 w-4' />
-          <AlertDescription>{errors.specialtyIds}</AlertDescription>
-        </Alert>
-      )}
       <div className='grid grid-cols-2 md:grid-cols-3 gap-2'>
-        {isLoadingSpecialties ? (
-          <div className='col-span-full flex items-center justify-center py-4'>
-            <Loader2 className='h-6 w-6 animate-spin' />
-            <span className='ml-2'>Cargando especialidades...</span>
+        {specialties?.map((specialty) => (
+          <div key={specialty.id} className='flex items-center space-x-2'>
+            <Checkbox
+              id={specialty.id}
+              checked={watch('specialtyIds').includes(specialty.id)}
+              onCheckedChange={() => handleSpecialtyToggle(specialty.id)}
+            />
+            <Label
+              htmlFor={specialty.id}
+              className='text-sm font-normal cursor-pointer'
+            >
+              {specialty.name}
+            </Label>
           </div>
-        ) : (
-          specialties?.map((specialty) => (
-            <div key={specialty.id} className='flex items-center space-x-2'>
-              <Checkbox
-                id={specialty.id}
-                checked={formData.specialtyIds.includes(specialty.id)}
-                onCheckedChange={() => handleSpecialtyToggle(specialty.id)}
-              />
-              <Label
-                htmlFor={specialty.id}
-                className='text-sm font-normal cursor-pointer'
-              >
-                {specialty.name}
-              </Label>
+        ))}
+      </div>
+      {errors.specialtyIds && (
+        <p className='text-sm text-red-600'>
+          {String(errors.specialtyIds?.message)}
+        </p>
+      )}
+    </div>
+  )
+
+  const renderClinicsSelection = () => (
+    <div className='space-y-3'>
+      <Label className='text-sm font-medium flex items-center gap-2'>
+        <MapPin className='h-4 w-4' />
+        Clínicas Asignadas
+      </Label>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+        {clinics?.data?.map((clinic: { id: string; name: string }) => (
+          <div key={clinic.id} className='flex items-center space-x-2'>
+            <Checkbox
+              id={clinic.id}
+              checked={watch('clinicIds').includes(clinic.id)}
+              onCheckedChange={() => {
+                const currentClinics = watch('clinicIds')
+                const index = currentClinics.indexOf(clinic.id)
+                if (index > -1) {
+                  currentClinics.splice(index, 1)
+                } else {
+                  currentClinics.push(clinic.id)
+                }
+                setValue('clinicIds', currentClinics)
+              }}
+            />
+            <Label
+              htmlFor={clinic.id}
+              className='text-sm font-normal cursor-pointer'
+            >
+              {clinic.name}
+            </Label>
+          </div>
+        ))}
+      </div>
+      {errors.clinicIds && (
+        <p className='text-sm text-red-600'>
+          {String(errors.clinicIds?.message)}
+        </p>
+      )}
+    </div>
+  )
+
+  const renderAvailabilitySection = () => (
+    <div className='space-y-4'>
+      <h3 className='text-lg font-semibold flex items-center gap-2'>
+        <Calendar className='h-5 w-5 text-blue-600' />
+        Disponibilidad Semanal
+      </h3>
+      <p className='text-sm text-muted-foreground'>
+        Configura los horarios de trabajo para cada día de la semana
+      </p>
+
+      <div className='space-y-3'>
+        {DAYS_OF_WEEK.map((day, index) => {
+          const dayAvailability = availability[index]
+          const isAvailable = dayAvailability.isAvailable
+
+          return (
+            <div key={day.value} className='border rounded-lg p-4'>
+              <div className='flex items-center justify-between mb-3'>
+                <div className='flex items-center gap-3'>
+                  <Checkbox
+                    id={`day-${day.value}`}
+                    checked={isAvailable}
+                    onCheckedChange={(checked) =>
+                      handleDayToggle(index, checked as boolean)
+                    }
+                  />
+                  <Label
+                    htmlFor={`day-${day.value}`}
+                    className='text-sm font-medium'
+                  >
+                    {day.label}
+                  </Label>
+                </div>
+                <div className='text-sm text-muted-foreground'>
+                  {isAvailable ? 'Disponible' : 'No disponible'}
+                </div>
+              </div>
+
+              {isAvailable && (
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='space-y-2'>
+                    <Label htmlFor={`start-${day.value}`} className='text-sm'>
+                      Hora de inicio
+                    </Label>
+                    <Input
+                      id={`start-${day.value}`}
+                      type='time'
+                      value={dayAvailability.startTime}
+                      onChange={(e) =>
+                        handleTimeChange(index, 'startTime', e.target.value)
+                      }
+                      className='w-full'
+                    />
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor={`end-${day.value}`} className='text-sm'>
+                      Hora de fin
+                    </Label>
+                    <Input
+                      id={`end-${day.value}`}
+                      type='time'
+                      value={dayAvailability.endTime}
+                      onChange={(e) =>
+                        handleTimeChange(index, 'endTime', e.target.value)
+                      }
+                      className='w-full'
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          ))
-        )}
+          )
+        })}
       </div>
     </div>
   )
@@ -475,161 +662,116 @@ export function DoctorForm({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className='space-y-6'>
+        <form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
           {/* Información Básica */}
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold'>Información Básica</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='space-y-2'>
-                <Label
-                  htmlFor='email'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <Mail className='h-4 w-4' />
                   Email
                 </Label>
                 <Input
-                  id='email'
                   type='email'
                   placeholder='doctor@ejemplo.com'
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={!!doctor} // No permitir cambiar email en edición
-                  className={errors.email ? 'border-red-500' : ''}
+                  disabled={!!doctor}
+                  {...register('email')}
                 />
                 {errors.email && (
-                  <p className='text-sm text-red-600'>{errors.email}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.email?.message)}
+                  </p>
                 )}
               </div>
 
               {!doctor && (
                 <div className='space-y-2'>
-                  <Label htmlFor='password' className='text-sm font-medium'>
-                    Contraseña
-                  </Label>
+                  <Label>Contraseña</Label>
                   <Input
-                    id='password'
                     type='password'
                     placeholder='Contraseña temporal'
-                    value={formData.password}
-                    onChange={(e) =>
-                      handleInputChange('password', e.target.value)
-                    }
-                    className={errors.password ? 'border-red-500' : ''}
+                    {...register('password')}
                   />
                   {errors.password && (
-                    <p className='text-sm text-red-600'>{errors.password}</p>
+                    <p className='text-sm text-red-600'>
+                      {String(errors.password?.message)}
+                    </p>
                   )}
                 </div>
               )}
 
               <div className='space-y-2'>
-                <Label htmlFor='firstName' className='text-sm font-medium'>
-                  Nombre
-                </Label>
-                <Input
-                  id='firstName'
-                  placeholder='Dr. Juan'
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    handleInputChange('firstName', e.target.value)
-                  }
-                  className={errors.firstName ? 'border-red-500' : ''}
-                />
+                <Label>Nombre</Label>
+                <Input placeholder='Dr. Juan' {...register('firstName')} />
                 {errors.firstName && (
-                  <p className='text-sm text-red-600'>{errors.firstName}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.firstName?.message)}
+                  </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='lastName' className='text-sm font-medium'>
-                  Apellido
-                </Label>
-                <Input
-                  id='lastName'
-                  placeholder='García'
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    handleInputChange('lastName', e.target.value)
-                  }
-                  className={errors.lastName ? 'border-red-500' : ''}
-                />
+                <Label>Apellido</Label>
+                <Input placeholder='García' {...register('lastName')} />
                 {errors.lastName && (
-                  <p className='text-sm text-red-600'>{errors.lastName}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.lastName?.message)}
+                  </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='license' className='text-sm font-medium'>
-                  Número de Licencia
-                </Label>
-                <Input
-                  id='license'
-                  placeholder='LIC-12345'
-                  value={formData.license}
-                  onChange={(e) => handleInputChange('license', e.target.value)}
-                  className={errors.license ? 'border-red-500' : ''}
-                />
+                <Label>Número de Licencia</Label>
+                <Input placeholder='LIC-12345' {...register('license')} />
                 {errors.license && (
-                  <p className='text-sm text-red-600'>{errors.license}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.license?.message)}
+                  </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label
-                  htmlFor='phone'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <Phone className='h-4 w-4' />
                   Teléfono
                 </Label>
-                <Input
-                  id='phone'
-                  placeholder='+1234567890'
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className={errors.phone ? 'border-red-500' : ''}
-                />
+                <Input placeholder='+1234567890' {...register('phone')} />
                 {errors.phone && (
-                  <p className='text-sm text-red-600'>{errors.phone}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.phone?.message)}
+                  </p>
                 )}
               </div>
             </div>
 
             <div className='space-y-2'>
-              <Label
-                htmlFor='address'
-                className='text-sm font-medium flex items-center gap-2'
-              >
+              <Label className='flex items-center gap-2'>
                 <MapPin className='h-4 w-4' />
                 Dirección
               </Label>
               <Input
-                id='address'
                 placeholder='Calle Principal 123, Ciudad'
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                className={errors.address ? 'border-red-500' : ''}
+                {...register('address')}
               />
               {errors.address && (
-                <p className='text-sm text-red-600'>{errors.address}</p>
+                <p className='text-sm text-red-600'>
+                  {String(errors.address?.message)}
+                </p>
               )}
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='bio' className='text-sm font-medium'>
-                Biografía
-              </Label>
+              <Label>Biografía</Label>
               <Textarea
-                id='bio'
                 placeholder='Especialista en cardiología con 10 años de experiencia...'
-                value={formData.bio}
-                onChange={(e) => handleInputChange('bio', e.target.value)}
                 rows={4}
-                className={errors.bio ? 'border-red-500' : ''}
+                {...register('bio')}
               />
               {errors.bio && (
-                <p className='text-sm text-red-600'>{errors.bio}</p>
+                <p className='text-sm text-red-600'>
+                  {String(errors.bio?.message)}
+                </p>
               )}
             </div>
           </div>
@@ -641,62 +783,44 @@ export function DoctorForm({
             <h3 className='text-lg font-semibold'>Información Profesional</h3>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='space-y-2'>
-                <Label
-                  htmlFor='consultationFee'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <DollarSign className='h-4 w-4' />
                   Tarifa de Consulta (USD)
                 </Label>
                 <Input
-                  id='consultationFee'
                   type='number'
                   placeholder='150'
-                  value={formData.consultationFee}
-                  onChange={(e) =>
-                    handleInputChange('consultationFee', Number(e.target.value))
-                  }
-                  className={errors.consultationFee ? 'border-red-500' : ''}
+                  {...register('consultationFee', { valueAsNumber: true })}
                 />
                 {errors.consultationFee && (
                   <p className='text-sm text-red-600'>
-                    {errors.consultationFee}
+                    {String(errors.consultationFee?.message)}
                   </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='experience' className='text-sm font-medium'>
-                  Años de Experiencia
-                </Label>
+                <Label>Años de Experiencia</Label>
                 <Input
-                  id='experience'
                   type='number'
                   placeholder='10'
-                  value={formData.experience}
-                  onChange={(e) =>
-                    handleInputChange('experience', Number(e.target.value))
-                  }
-                  className={errors.experience ? 'border-red-500' : ''}
+                  {...register('experience', { valueAsNumber: true })}
                 />
                 {errors.experience && (
-                  <p className='text-sm text-red-600'>{errors.experience}</p>
+                  <p className='text-sm text-red-600'>
+                    {String(errors.experience?.message)}
+                  </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label
-                  htmlFor='timeZone'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <Clock className='h-4 w-4' />
                   Zona Horaria
                 </Label>
                 <Select
-                  value={formData.timeZone}
-                  onValueChange={(value) =>
-                    handleInputChange('timeZone', value)
-                  }
+                  onValueChange={(value) => setValue('timeZone', value)}
+                  defaultValue={watch('timeZone')}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Seleccionar zona horaria' />
@@ -716,41 +840,71 @@ export function DoctorForm({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.timeZone && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.timeZone?.message)}
+                  </p>
+                )}
               </div>
             </div>
 
-            {renderSpecialtiesSelection()}
+            {/* Especialidades */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <GraduationCap className='h-5 w-5 text-blue-600' />
+                Especialidades
+              </h3>
+              {renderSpecialtiesSelection()}
+            </div>
+
+            <Separator />
+
+            {/* Clínicas */}
+            <div className='space-y-4'>
+              <h3 className='text-lg font-semibold flex items-center gap-2'>
+                <MapPin className='h-5 w-5 text-green-600' />
+                Clínicas
+              </h3>
+              {renderClinicsSelection()}
+            </div>
+
+            <Separator />
 
             {renderArrayInput(
-              'education',
+              education,
+              setEducation,
               'Educación',
               'Universidad Nacional - Medicina',
               <GraduationCap className='h-4 w-4' />
             )}
 
             {renderArrayInput(
-              'languages',
+              languages,
+              setLanguages,
               'Idiomas',
               'Español',
               <Languages className='h-4 w-4' />
             )}
 
             {renderArrayInput(
-              'certifications',
+              certifications,
+              setCertifications,
               'Certificaciones',
               'Certificación del Colegio Médico',
               <Award className='h-4 w-4' />
             )}
 
             {renderArrayInput(
-              'awards',
+              awards,
+              setAwards,
               'Premios y Reconocimientos',
               'Premio a la Excelencia Médica',
               <Award className='h-4 w-4' />
             )}
 
             {renderArrayInput(
-              'publications',
+              publications,
+              setPublications,
               'Publicaciones',
               'Artículo en Revista Médica',
               <GraduationCap className='h-4 w-4' />
@@ -766,43 +920,42 @@ export function DoctorForm({
             </h3>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='space-y-2'>
-                <Label
-                  htmlFor='publicEmail'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <Mail className='h-4 w-4' />
                   Email Público
                 </Label>
                 <Input
-                  id='publicEmail'
                   type='email'
                   placeholder='doctor@medicaldatedr.com'
-                  value={formData.publicEmail}
-                  onChange={(e) =>
-                    handleInputChange('publicEmail', e.target.value)
-                  }
+                  {...register('publicEmail')}
                 />
+                {errors.publicEmail && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.publicEmail?.message)}
+                  </p>
+                )}
               </div>
 
               <div className='space-y-2'>
-                <Label
-                  htmlFor='publicPhone'
-                  className='text-sm font-medium flex items-center gap-2'
-                >
+                <Label className='flex items-center gap-2'>
                   <Phone className='h-4 w-4' />
                   Teléfono Público
                 </Label>
                 <Input
-                  id='publicPhone'
                   placeholder='+1-809-555-0123'
-                  value={formData.publicPhone}
-                  onChange={(e) =>
-                    handleInputChange('publicPhone', e.target.value)
-                  }
+                  {...register('publicPhone')}
                 />
+                {errors.publicPhone && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.publicPhone?.message)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Disponibilidad */}
+          {renderAvailabilitySection()}
 
           {/* Botones de Acción */}
           <div className='flex justify-end space-x-2 pt-6'>

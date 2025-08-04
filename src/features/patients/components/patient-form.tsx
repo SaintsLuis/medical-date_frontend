@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,8 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
 import {
   User,
   Phone,
@@ -30,16 +33,70 @@ import {
   Plus,
   X,
   Loader2,
-  AlertCircle,
   Calendar,
-  Mail,
   Shield,
-  Heart,
   Info,
 } from 'lucide-react'
 import { useUpdatePatient } from '../hooks/use-patients'
-import type { Patient, UpdatePatientData, PatientFormData } from '../types'
+import { updateUserAction } from '@/features/users/actions/user-actions'
+import { useFormPersistence } from '@/hooks/use-form-persistence'
+import type { Patient, UpdatePatientData } from '../types'
 import { BLOOD_TYPES, formatBloodType } from '../types'
+
+// ==============================================
+// Schema de Validación con Zod
+// ==============================================
+
+const patientFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres'),
+  lastName: z
+    .string()
+    .min(2, 'El apellido debe tener al menos 2 caracteres')
+    .max(50, 'El apellido no puede exceder 50 caracteres'),
+  phone: z.string().min(1, 'El teléfono es requerido'),
+  birthDate: z.string().min(1, 'La fecha de nacimiento es requerida'),
+  gender: z.enum(['MALE', 'FEMALE'], {
+    required_error: 'El género es requerido',
+  }),
+  address: z.string().min(1, 'La dirección es requerida'),
+  emergencyContact: z.string().min(1, 'El contacto de emergencia es requerido'),
+  bloodType: z.enum([
+    'A_POSITIVE',
+    'A_NEGATIVE',
+    'B_POSITIVE',
+    'B_NEGATIVE',
+    'AB_POSITIVE',
+    'AB_NEGATIVE',
+    'O_POSITIVE',
+    'O_NEGATIVE',
+  ]),
+  allergies: z.array(z.string()),
+})
+
+type PatientFormData = z.infer<typeof patientFormSchema>
+
+// ==============================================
+// Valores por Defecto
+// ==============================================
+
+const defaultValues: PatientFormData = {
+  firstName: '',
+  lastName: '',
+  phone: '',
+  birthDate: '',
+  gender: 'MALE',
+  address: '',
+  emergencyContact: '',
+  bloodType: 'O_POSITIVE',
+  allergies: [],
+}
+
+// ==============================================
+// Interfaces
+// ==============================================
 
 interface PatientFormProps {
   patient: Patient
@@ -49,395 +106,414 @@ interface PatientFormProps {
   description?: string
 }
 
+// ==============================================
+// Componente Principal
+// ==============================================
+
 export function PatientForm({
   patient,
   onSuccess,
   onCancel,
-  title = 'Editar Paciente',
-  description = 'Actualiza la información médica del paciente',
+  title = 'Actualizar Paciente',
+  description = 'Actualiza la información del paciente',
 }: PatientFormProps) {
-  const [formData, setFormData] = useState<PatientFormData>({
-    address: '',
-    emergencyContact: '',
-    bloodType: 'O_POSITIVE',
-    allergies: [],
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [allergies, setAllergies] = useState<string[]>([])
+  const updatePatient = useUpdatePatient()
+
+  // ==============================================
+  // React Hook Form Setup
+  // ==============================================
+
+  const form = useForm<PatientFormData>({
+    resolver: zodResolver(patientFormSchema),
+    defaultValues,
+    mode: 'onChange',
   })
-  const [newAllergy, setNewAllergy] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const updateMutation = useUpdatePatient()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+    reset,
+    watch,
+    setValue,
+  } = form
 
-  // Inicializar formulario con datos del paciente
+  // Persistencia del estado del formulario
+  const formKey = `patient-form-${patient?.id || 'new'}`
+
+  const { handleSuccess, handleCancel: handleFormCancel } = useFormPersistence({
+    formKey,
+    watch,
+    reset,
+    isDirty,
+    enabled: false, // No habilitar para pacientes ya que solo es actualización
+    onSuccess: () => onSuccess?.(patient),
+    onCancel: onCancel,
+  })
+
+  // ==============================================
+  // Efectos
+  // ==============================================
+
   useEffect(() => {
     if (patient) {
-      setFormData({
-        address: patient.address || '',
-        emergencyContact: patient.emergencyContact || '',
-        bloodType: patient.bloodType || 'O_POSITIVE',
+      // Llenar el formulario con los datos del paciente
+      reset({
+        firstName: patient.user.firstName,
+        lastName: patient.user.lastName,
+        phone: patient.user.phoneNumber,
+        birthDate: patient.birthDate,
+        gender: patient.gender,
+        address: patient.address,
+        emergencyContact: patient.emergencyContact,
+        bloodType: patient.bloodType,
         allergies: patient.allergies || [],
       })
+      setAllergies(patient.allergies || [])
     }
-  }, [patient])
+  }, [patient, reset])
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+  // ==============================================
+  // Handlers
+  // ==============================================
 
-    if (!formData.address.trim()) {
-      newErrors.address = 'La dirección es requerida'
-    }
+  const onSubmit = async (data: PatientFormData) => {
+    setIsSubmitting(true)
 
-    if (!formData.emergencyContact.trim()) {
-      newErrors.emergencyContact = 'El contacto de emergencia es requerido'
-    }
+    try {
+      // Actualizar datos del usuario (firstName, lastName, phone)
+      if (
+        data.firstName !== patient.user.firstName ||
+        data.lastName !== patient.user.lastName ||
+        data.phone !== patient.user.phoneNumber
+      ) {
+        const userUpdateResult = await updateUserAction(patient.user.id, {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phoneNumber: data.phone,
+        })
 
-    if (!formData.bloodType) {
-      newErrors.bloodType = 'El tipo de sangre es requerido'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-
-    // Limpiar error del campo
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }))
-    }
-  }
-
-  const handleBloodTypeChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      bloodType: value as
-        | 'A_POSITIVE'
-        | 'A_NEGATIVE'
-        | 'B_POSITIVE'
-        | 'B_NEGATIVE'
-        | 'AB_POSITIVE'
-        | 'AB_NEGATIVE'
-        | 'O_POSITIVE'
-        | 'O_NEGATIVE',
-    }))
-    if (errors.bloodType) {
-      setErrors((prev) => ({ ...prev, bloodType: '' }))
-    }
-  }
-
-  const addAllergy = () => {
-    if (newAllergy.trim() && !formData.allergies.includes(newAllergy.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        allergies: [...prev.allergies, newAllergy.trim()],
-      }))
-      setNewAllergy('')
-    }
-  }
-
-  const removeAllergy = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      allergies: prev.allergies.filter((_, i) => i !== index),
-    }))
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addAllergy()
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
-
-    const updateData: UpdatePatientData = {
-      address: formData.address,
-      emergencyContact: formData.emergencyContact,
-      bloodType: formData.bloodType,
-      allergies: formData.allergies,
-    }
-
-    updateMutation.mutate(
-      { id: patient.id, data: updateData },
-      {
-        onSuccess: (result) => {
-          if (result.success && result.data) {
-            onSuccess?.(result.data)
-          }
-        },
+        if (!userUpdateResult.success) {
+          throw new Error(
+            userUpdateResult.error || 'Error al actualizar datos del usuario'
+          )
+        }
       }
-    )
+
+      // Actualizar datos del perfil del paciente
+      const updateData: UpdatePatientData = {
+        birthDate: data.birthDate,
+        gender: data.gender,
+        address: data.address,
+        emergencyContact: data.emergencyContact,
+        bloodType: data.bloodType,
+        allergies: allergies,
+      }
+
+      const result = await updatePatient.mutateAsync({
+        id: patient.id,
+        data: updateData,
+      })
+
+      if (result.success && result.data) {
+        handleSuccess()
+        onSuccess?.(result.data)
+      } else {
+        throw new Error(result.error || 'Error al actualizar paciente')
+      }
+    } catch (error) {
+      console.error('❌ Submit error:', error)
+      toast.error(error instanceof Error ? error.message : 'Error inesperado')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
-    onCancel?.()
+    handleFormCancel()
   }
 
-  return (
-    <div className='w-full max-w-4xl mx-auto space-y-6'>
-      {/* Header con información del paciente */}
-      <div className='bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200'>
-        <div className='flex items-center gap-4'>
-          <div className='h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center'>
-            <User className='h-8 w-8 text-blue-600' />
-          </div>
+  const addAllergy = () => {
+    setAllergies([...allergies, ''])
+  }
+
+  const removeAllergy = (index: number) => {
+    setAllergies(allergies.filter((_, i) => i !== index))
+  }
+
+  const updateAllergy = (index: number, value: string) => {
+    const newAllergies = [...allergies]
+    newAllergies[index] = value
+    setAllergies(newAllergies)
+  }
+
+  // ==============================================
+  // Componentes de Renderizado
+  // ==============================================
+
+  const renderAllergiesSection = () => (
+    <div className='space-y-3'>
+      <Label className='text-sm font-medium flex items-center gap-2'>
+        <AlertTriangle className='h-4 w-4' />
+        Alergias
+      </Label>
+
+      {allergies.map((allergy, index) => (
+        <div key={index} className='flex gap-2'>
           <div className='flex-1'>
-            <h2 className='text-2xl font-bold text-gray-900'>
-              {patient.user.firstName} {patient.user.lastName}
-            </h2>
-            <p className='text-gray-600'>ID: {patient.id}</p>
-            <div className='flex items-center gap-4 mt-2 text-sm text-gray-500'>
-              <div className='flex items-center gap-1'>
-                <Calendar className='h-4 w-4' />
-                <span>{patient.age} años</span>
-              </div>
-              <div className='flex items-center gap-1'>
-                <Heart className='h-4 w-4' />
-                <span>{formatBloodType(patient.bloodType)}</span>
-              </div>
-              <div className='flex items-center gap-1'>
-                <Mail className='h-4 w-4' />
-                <span>{patient.user.email}</span>
-              </div>
-            </div>
+            <Input
+              placeholder='Ej: Penicilina, Polen, etc.'
+              value={allergy}
+              onChange={(e) => updateAllergy(index, e.target.value)}
+            />
           </div>
-          <div className='text-right'>
-            <Badge variant={patient.user.isActive ? 'default' : 'secondary'}>
-              {patient.user.isActive ? 'Activo' : 'Inactivo'}
-            </Badge>
-          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={() => removeAllergy(index)}
+            className='px-2'
+          >
+            <X className='h-4 w-4' />
+          </Button>
         </div>
-      </div>
+      ))}
 
-      {/* Formulario */}
-      <Card className='border-0 shadow-lg'>
-        <CardHeader className='bg-gradient-to-r from-gray-50 to-gray-100 border-b'>
-          <CardTitle className='flex items-center gap-2 text-xl'>
-            <Shield className='h-6 w-6 text-blue-600' />
-            {title}
-          </CardTitle>
-          <CardDescription className='text-gray-600'>
-            {description}
-          </CardDescription>
-        </CardHeader>
-
-        <form onSubmit={handleSubmit}>
-          <CardContent className='p-6 space-y-8'>
-            {/* Información médica editable */}
-            <div className='space-y-6'>
-              <div className='flex items-center gap-2 pb-2 border-b border-gray-200'>
-                <Info className='h-5 w-5 text-blue-600' />
-                <h3 className='text-lg font-semibold text-gray-900'>
-                  Información Médica
-                </h3>
-              </div>
-
-              <div className='grid gap-6 md:grid-cols-2'>
-                {/* Dirección */}
-                <div className='space-y-3'>
-                  <Label
-                    htmlFor='address'
-                    className='flex items-center gap-2 text-sm font-medium'
-                  >
-                    <MapPin className='h-4 w-4 text-blue-600' />
-                    Dirección
-                  </Label>
-                  <Textarea
-                    id='address'
-                    value={formData.address}
-                    onChange={(e) =>
-                      handleInputChange('address', e.target.value)
-                    }
-                    placeholder='Ingrese la dirección completa del paciente'
-                    className={`min-h-[80px] resize-none ${
-                      errors.address
-                        ? 'border-red-500 focus:border-red-500'
-                        : ''
-                    }`}
-                  />
-                  {errors.address && (
-                    <p className='text-sm text-red-600 flex items-center gap-1'>
-                      <AlertCircle className='h-3 w-3' />
-                      {errors.address}
-                    </p>
-                  )}
-                </div>
-
-                {/* Contacto de emergencia */}
-                <div className='space-y-3'>
-                  <Label
-                    htmlFor='emergencyContact'
-                    className='flex items-center gap-2 text-sm font-medium'
-                  >
-                    <Phone className='h-4 w-4 text-red-600' />
-                    Contacto de Emergencia
-                  </Label>
-                  <Input
-                    id='emergencyContact'
-                    value={formData.emergencyContact}
-                    onChange={(e) =>
-                      handleInputChange('emergencyContact', e.target.value)
-                    }
-                    placeholder='Nombre y teléfono del contacto de emergencia'
-                    className={
-                      errors.emergencyContact
-                        ? 'border-red-500 focus:border-red-500'
-                        : ''
-                    }
-                  />
-                  {errors.emergencyContact && (
-                    <p className='text-sm text-red-600 flex items-center gap-1'>
-                      <AlertCircle className='h-3 w-3' />
-                      {errors.emergencyContact}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className='grid gap-6 md:grid-cols-2'>
-                {/* Tipo de sangre */}
-                <div className='space-y-3'>
-                  <Label
-                    htmlFor='bloodType'
-                    className='flex items-center gap-2 text-sm font-medium'
-                  >
-                    <Droplets className='h-4 w-4 text-red-600' />
-                    Tipo de Sangre
-                  </Label>
-                  <Select
-                    value={formData.bloodType}
-                    onValueChange={handleBloodTypeChange}
-                  >
-                    <SelectTrigger
-                      className={
-                        errors.bloodType
-                          ? 'border-red-500 focus:border-red-500'
-                          : ''
-                      }
-                    >
-                      <SelectValue placeholder='Seleccionar tipo de sangre' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BLOOD_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          <div className='flex items-center gap-2'>
-                            <span className='font-mono'>
-                              {formatBloodType(type)}
-                            </span>
-                            <span className='text-gray-500'>({type})</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.bloodType && (
-                    <p className='text-sm text-red-600 flex items-center gap-1'>
-                      <AlertCircle className='h-3 w-3' />
-                      {errors.bloodType}
-                    </p>
-                  )}
-                </div>
-
-                {/* Alergias */}
-                <div className='space-y-3'>
-                  <Label className='flex items-center gap-2 text-sm font-medium'>
-                    <AlertTriangle className='h-4 w-4 text-orange-600' />
-                    Alergias
-                  </Label>
-
-                  {/* Lista de alergias existentes */}
-                  {formData.allergies.length > 0 && (
-                    <div className='flex flex-wrap gap-2 p-3 bg-orange-50 rounded-lg border border-orange-200'>
-                      {formData.allergies.map((allergy, index) => (
-                        <Badge
-                          key={index}
-                          variant='secondary'
-                          className='flex items-center gap-1 bg-orange-100 text-orange-800 hover:bg-orange-200'
-                        >
-                          {allergy}
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            className='h-4 w-4 p-0 hover:bg-orange-300 hover:text-orange-900'
-                            onClick={() => removeAllergy(index)}
-                          >
-                            <X className='h-3 w-3' />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Agregar nueva alergia */}
-                  <div className='flex gap-2'>
-                    <Input
-                      value={newAllergy}
-                      onChange={(e) => setNewAllergy(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder='Agregar nueva alergia'
-                      className='flex-1'
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={addAllergy}
-                      disabled={!newAllergy.trim()}
-                      className='px-4'
-                    >
-                      <Plus className='h-4 w-4' />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mensajes de error */}
-            {updateMutation.error && (
-              <Alert variant='destructive' className='border-red-200 bg-red-50'>
-                <AlertCircle className='h-4 w-4' />
-                <AlertDescription className='text-red-800'>
-                  Error al actualizar paciente. Inténtalo de nuevo.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Botones de acción */}
-            <div className='flex justify-end gap-3 pt-6 border-t border-gray-200'>
-              <Button
-                type='button'
-                variant='outline'
-                onClick={handleCancel}
-                disabled={updateMutation.isPending}
-                className='px-6'
-              >
-                Cancelar
-              </Button>
-              <Button
-                type='submit'
-                disabled={updateMutation.isPending}
-                className='px-6 bg-blue-600 hover:bg-blue-700'
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Actualizando...
-                  </>
-                ) : (
-                  'Actualizar Paciente'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </form>
-      </Card>
+      <Button
+        type='button'
+        variant='outline'
+        size='sm'
+        onClick={addAllergy}
+        className='w-full'
+      >
+        <Plus className='h-4 w-4 mr-2' />
+        Agregar Alergia
+      </Button>
     </div>
+  )
+
+  // ==============================================
+  // Render Principal
+  // ==============================================
+
+  return (
+    <Card className='w-full max-w-4xl mx-auto'>
+      <CardHeader>
+        <CardTitle className='flex items-center gap-2'>
+          <User className='h-5 w-5' />
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
+          {/* Información Personal */}
+          <div className='space-y-4'>
+            <h3 className='text-lg font-semibold flex items-center gap-2'>
+              <Info className='h-5 w-5 text-blue-600' />
+              Información Personal
+            </h3>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div className='space-y-2'>
+                <Label>Nombre</Label>
+                <Input placeholder='Juan' {...register('firstName')} />
+                {errors.firstName && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.firstName?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label>Apellido</Label>
+                <Input placeholder='García' {...register('lastName')} />
+                {errors.lastName && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.lastName?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <Phone className='h-4 w-4' />
+                  Teléfono
+                </Label>
+                <Input placeholder='+1234567890' {...register('phone')} />
+                {errors.phone && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.phone?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <Calendar className='h-4 w-4' />
+                  Fecha de Nacimiento
+                </Label>
+                <Input type='date' {...register('birthDate')} />
+                {errors.birthDate && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.birthDate?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label>Género</Label>
+                <Select
+                  onValueChange={(value) =>
+                    setValue('gender', value as 'MALE' | 'FEMALE')
+                  }
+                  defaultValue={watch('gender')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Seleccionar género' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='MALE'>Masculino</SelectItem>
+                    <SelectItem value='FEMALE'>Femenino</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.gender && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.gender?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <Droplets className='h-4 w-4' />
+                  Tipo de Sangre
+                </Label>
+                <Select
+                  onValueChange={(value) =>
+                    setValue(
+                      'bloodType',
+                      value as
+                        | 'A_POSITIVE'
+                        | 'A_NEGATIVE'
+                        | 'B_POSITIVE'
+                        | 'B_NEGATIVE'
+                        | 'AB_POSITIVE'
+                        | 'AB_NEGATIVE'
+                        | 'O_POSITIVE'
+                        | 'O_NEGATIVE'
+                    )
+                  }
+                  defaultValue={watch('bloodType')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Seleccionar tipo de sangre' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BLOOD_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        <div className='flex items-center gap-2'>
+                          <span className='font-mono'>
+                            {formatBloodType(type)}
+                          </span>
+                          <span className='text-gray-500'>({type})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.bloodType && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.bloodType?.message)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Información de Contacto */}
+          <div className='space-y-4'>
+            <h3 className='text-lg font-semibold flex items-center gap-2'>
+              <Shield className='h-5 w-5 text-blue-600' />
+              Información de Contacto
+            </h3>
+            <div className='space-y-4'>
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <MapPin className='h-4 w-4' />
+                  Dirección
+                </Label>
+                <Textarea
+                  placeholder='Calle Principal 123, Ciudad, País'
+                  rows={3}
+                  {...register('address')}
+                />
+                {errors.address && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.address?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <Phone className='h-4 w-4 text-red-600' />
+                  Contacto de Emergencia
+                </Label>
+                <Input
+                  placeholder='Nombre y teléfono del contacto de emergencia'
+                  {...register('emergencyContact')}
+                />
+                {errors.emergencyContact && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.emergencyContact?.message)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Información Médica */}
+          <div className='space-y-4'>
+            <h3 className='text-lg font-semibold flex items-center gap-2'>
+              <AlertTriangle className='h-5 w-5 text-orange-600' />
+              Información Médica
+            </h3>
+            {renderAllergiesSection()}
+          </div>
+
+          {/* Botones de Acción */}
+          <div className='flex justify-end space-x-2 pt-6'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type='submit'
+              disabled={isSubmitting}
+              className='min-w-[120px]'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Actualizando...
+                </>
+              ) : (
+                'Actualizar Paciente'
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

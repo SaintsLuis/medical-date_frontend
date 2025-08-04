@@ -2,27 +2,10 @@
 // Exports del Módulo de Doctores
 // ==============================================
 
-// Componentes
-export { DoctorsManagement } from './components/doctors-management'
+// Components
 export { DoctorForm } from './components/doctor-form'
+export { DoctorsManagement } from './components/doctors-management'
 export { DoctorsSkeleton } from './components/doctors-skeleton'
-
-// Hooks
-export {
-  useDoctors,
-  useAllDoctors,
-  useDoctor,
-  useDoctorStats,
-  useDoctorSearch,
-  useDoctorsBySpecialty,
-  useDoctorsByLocation,
-  useCreateDoctor,
-  useUpdateDoctor,
-  useDeleteDoctor,
-  useToggleDoctorStatus,
-  usePrefetchDoctor,
-  useDoctorManagement,
-} from './hooks/use-doctors'
 
 // Actions
 export {
@@ -37,32 +20,22 @@ export {
   searchDoctorsAction,
   getDoctorsBySpecialtyAction,
   getDoctorsByLocationAction,
-  getDoctorAvailabilityAction,
-  updateDoctorAvailabilityAction,
   assignSpecialtiesAction,
   removeSpecialtiesAction,
 } from './actions/doctor-actions'
 
-// Tipos
+// Hooks
+export { useDoctors } from './hooks/use-doctors'
+export { useUpdateDoctor } from './hooks/use-doctors'
+
+// Types
 export type {
   Doctor,
-  DoctorWithDetails,
   CreateDoctorData,
   UpdateDoctorData,
+  DoctorFormData,
   QueryDoctorsParams,
   PaginatedDoctorsResponse,
   CreateDoctorResponse,
   DoctorStats,
-  DoctorFormData,
-  DoctorFilters,
-  DoctorAnalytics,
-  DoctorAvailability,
-  AvailabilitySchedule,
-  DoctorSpecialty,
-} from './types'
-
-export {
-  DOCTOR_FORM_DEFAULTS,
-  DOCTOR_VALIDATION,
-  DOCTOR_FILTER_DEFAULTS,
 } from './types'

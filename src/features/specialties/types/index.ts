@@ -1,5 +1,7 @@
 // src/features/specialties/types/index.ts
 
+import { z } from 'zod'
+
 // ========================
 // Tipos Principales
 // ========================
@@ -133,3 +135,23 @@ export const SPECIALTY_VALIDATION = {
     maxLength: 500,
   },
 } as const
+
+/**
+ * Schema Zod para validación de formularios de especialidades
+ */
+export const specialtyFormSchema = z.object({
+  name: z
+    .string()
+    .min(SPECIALTY_VALIDATION.name.minLength, {
+      message: `El nombre debe tener al menos ${SPECIALTY_VALIDATION.name.minLength} caracteres`,
+    })
+    .max(SPECIALTY_VALIDATION.name.maxLength, {
+      message: `El nombre no puede exceder ${SPECIALTY_VALIDATION.name.maxLength} caracteres`,
+    })
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, {
+      message: 'El nombre solo puede contener letras y espacios',
+    }),
+  description: z.string().max(SPECIALTY_VALIDATION.description.maxLength, {
+    message: `La descripción no puede exceder ${SPECIALTY_VALIDATION.description.maxLength} caracteres`,
+  }),
+})

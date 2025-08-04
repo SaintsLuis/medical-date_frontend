@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,12 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { useUpdateUser } from '../hooks/use-users'
-import type { User as UserType, UpdateUserData } from '../types'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import {
   User as UserIcon,
   Shield,
@@ -24,9 +21,12 @@ import {
   Heart,
   Save,
   X,
-  AlertCircle,
   Loader2,
 } from 'lucide-react'
+import { userFormSchema, UserFormData, User as UserType } from '../types'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { useUpdateUser } from '../hooks/use-users'
 
 // ==============================================
 // Interfaces
@@ -51,98 +51,92 @@ export function UserForm({
   title = 'Editar Usuario',
   description = 'Actualiza la información básica del usuario',
 }: UserFormProps) {
-  const [formData, setFormData] = useState<UpdateUserData>({
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phoneNumber: user.phoneNumber || '',
-    isActive: user.isActive,
-    otpEnabled: user.otpEnabled,
-  })
-
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const updateUser = useUpdateUser()
 
-  // ==============================================
-  // Validación
-  // ==============================================
+  // React Hook Form setup
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(userFormSchema),
+    mode: 'onChange',
+    defaultValues: {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber || '',
+      isActive: user.isActive,
+      otpEnabled: user.otpEnabled,
+    },
+  })
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+  const {
+    register,
+    formState: { errors },
+    reset,
+  } = form
 
-    // Validar email
-    if (!formData.email || formData.email.trim() === '') {
-      newErrors.email = 'El correo electrónico es requerido'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'El correo electrónico no es válido'
-    }
+  // Resetear formulario cuando cambia el usuario
+  // (por si se reusa el componente para otro usuario)
+  React.useEffect(() => {
+    reset({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber || '',
+      isActive: user.isActive,
+      otpEnabled: user.otpEnabled,
+    })
+  }, [user, reset])
 
-    // Validar nombre
-    if (!formData.firstName || formData.firstName.trim() === '') {
-      newErrors.firstName = 'El nombre es requerido'
-    } else if (formData.firstName.length < 2) {
-      newErrors.firstName = 'El nombre debe tener al menos 2 caracteres'
-    }
-
-    // Validar apellido
-    if (!formData.lastName || formData.lastName.trim() === '') {
-      newErrors.lastName = 'El apellido es requerido'
-    } else if (formData.lastName.length < 2) {
-      newErrors.lastName = 'El apellido debe tener al menos 2 caracteres'
-    }
-
-    // Validar teléfono (opcional pero si se proporciona debe ser válido)
-    if (formData.phoneNumber && formData.phoneNumber.trim() !== '') {
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
-      if (!phoneRegex.test(formData.phoneNumber.replace(/[\s\-\(\)]/g, ''))) {
-        newErrors.phoneNumber = 'El número de teléfono no es válido'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  // ==============================================
-  // Handlers
-  // ==============================================
-
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-
-    // Limpiar error del campo cuando el usuario empiece a escribir
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: '',
-      }))
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
-
+  // Submit handler
+  const onSubmit = async (data: UserFormData) => {
     try {
       const result = await updateUser.mutateAsync({
         id: user.id,
-        data: formData,
+        data,
       })
-
       if (result.success && result.data) {
+        toast.success('Usuario actualizado exitosamente')
         onSuccess?.(result.data)
+      } else {
+        toast.error(result.error || 'Error al actualizar usuario')
       }
     } catch (error) {
-      console.error('Error al actualizar usuario:', error)
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error inesperado'
+      toast.error(errorMessage)
     }
   }
 
+  // Debug logs
+  React.useEffect(() => {
+    console.log('=== DEBUG FORM STATE ===')
+    console.log('isDirty:', form.formState.isDirty)
+    console.log('isValid:', form.formState.isValid)
+    console.log('isPending:', updateUser.isPending)
+    console.log('Current values:', form.watch())
+    console.log('Initial values:', {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber || '',
+      isActive: user.isActive,
+      otpEnabled: user.otpEnabled,
+    })
+    console.log('Form errors:', form.formState.errors)
+    console.log(
+      'Button disabled:',
+      updateUser.isPending || !form.formState.isValid || !form.formState.isDirty
+    )
+    console.log('=======================')
+  }, [
+    form.formState.isDirty,
+    form.formState.isValid,
+    form.formState.errors,
+    updateUser.isPending,
+    form.watch(),
+    user,
+  ])
+
+  // Cancel handler
   const handleCancel = () => {
     onCancel?.()
   }
@@ -173,12 +167,37 @@ export function UserForm({
     return roleNames.join(', ')
   }
 
+  // Formatear número de teléfono para mostrar
+  const formatPhoneNumber = (value: string) => {
+    if (!value) return value
+
+    // Remover todos los caracteres no numéricos
+    const cleanNumber = value.replace(/\D/g, '')
+
+    // Si tiene 10 dígitos, formatear como (809) 123-4567
+    if (cleanNumber.length === 10) {
+      return `(${cleanNumber.slice(0, 3)}) ${cleanNumber.slice(
+        3,
+        6
+      )}-${cleanNumber.slice(6)}`
+    }
+
+    // Si tiene menos de 10 dígitos, mostrar como está
+    return cleanNumber
+  }
+
+  // Obtener solo dígitos del número de teléfono
+  const getCleanPhoneNumber = (value: string) => {
+    if (!value) return ''
+    return value.replace(/\D/g, '')
+  }
+
   // ==============================================
   // Render
   // ==============================================
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-6 pb-4'>
       {/* Información del usuario actual */}
       <Card>
         <CardHeader>
@@ -238,7 +257,7 @@ export function UserForm({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className='space-y-6'>
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
             {/* Información básica */}
             <div className='space-y-4'>
               <h3 className='text-lg font-medium'>Información Personal</h3>
@@ -248,16 +267,15 @@ export function UserForm({
                   <Label htmlFor='firstName'>Nombre *</Label>
                   <Input
                     id='firstName'
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      handleInputChange('firstName', e.target.value)
-                    }
+                    {...register('firstName')}
                     placeholder='Juan'
                     className={errors.firstName ? 'border-red-500' : ''}
                     disabled={updateUser.isPending}
                   />
                   {errors.firstName && (
-                    <p className='text-sm text-red-600'>{errors.firstName}</p>
+                    <p className='text-sm text-red-600'>
+                      {errors.firstName.message}
+                    </p>
                   )}
                 </div>
 
@@ -265,16 +283,15 @@ export function UserForm({
                   <Label htmlFor='lastName'>Apellido *</Label>
                   <Input
                     id='lastName'
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      handleInputChange('lastName', e.target.value)
-                    }
+                    {...register('lastName')}
                     placeholder='Pérez'
                     className={errors.lastName ? 'border-red-500' : ''}
                     disabled={updateUser.isPending}
                   />
                   {errors.lastName && (
-                    <p className='text-sm text-red-600'>{errors.lastName}</p>
+                    <p className='text-sm text-red-600'>
+                      {errors.lastName.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -284,14 +301,13 @@ export function UserForm({
                 <Input
                   id='email'
                   type='email'
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  {...register('email')}
                   placeholder='usuario@ejemplo.com'
                   className={errors.email ? 'border-red-500' : ''}
                   disabled={updateUser.isPending}
                 />
                 {errors.email && (
-                  <p className='text-sm text-red-600'>{errors.email}</p>
+                  <p className='text-sm text-red-600'>{errors.email.message}</p>
                 )}
               </div>
 
@@ -300,16 +316,19 @@ export function UserForm({
                 <Input
                   id='phoneNumber'
                   type='tel'
-                  value={formData.phoneNumber}
-                  onChange={(e) =>
-                    handleInputChange('phoneNumber', e.target.value)
-                  }
-                  placeholder='+1 (555) 123-4567'
+                  value={formatPhoneNumber(form.watch('phoneNumber') || '')}
+                  onChange={(e) => {
+                    const cleanValue = getCleanPhoneNumber(e.target.value)
+                    form.setValue('phoneNumber', cleanValue)
+                  }}
+                  placeholder='8291234567'
                   className={errors.phoneNumber ? 'border-red-500' : ''}
                   disabled={updateUser.isPending}
                 />
                 {errors.phoneNumber && (
-                  <p className='text-sm text-red-600'>{errors.phoneNumber}</p>
+                  <p className='text-sm text-red-600'>
+                    {errors.phoneNumber.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -328,17 +347,20 @@ export function UserForm({
                       Activar o desactivar el acceso del usuario al sistema
                     </p>
                   </div>
-                  <Switch
+                  <input
+                    type='checkbox'
                     id='isActive'
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) =>
-                      handleInputChange('isActive', checked)
+                    {...register('isActive')}
+                    checked={form.watch('isActive')}
+                    onChange={(e) =>
+                      form.setValue('isActive', e.target.checked)
                     }
                     disabled={updateUser.isPending}
+                    className='h-5 w-5 accent-blue-600 rounded border-gray-300'
                   />
                 </div>
 
-                <div className='flex items-center justify-between'>
+                {/* <div className='flex items-center justify-between'>
                   <div className='space-y-0.5'>
                     <Label htmlFor='otpEnabled'>
                       Autenticación de dos factores
@@ -347,27 +369,20 @@ export function UserForm({
                       Habilitar verificación OTP para mayor seguridad
                     </p>
                   </div>
-                  <Switch
+                  <input
+                    type='checkbox'
                     id='otpEnabled'
-                    checked={formData.otpEnabled}
-                    onCheckedChange={(checked) =>
-                      handleInputChange('otpEnabled', checked)
+                    {...register('otpEnabled')}
+                    checked={form.watch('otpEnabled')}
+                    onChange={(e) =>
+                      form.setValue('otpEnabled', e.target.checked)
                     }
                     disabled={updateUser.isPending}
+                    className='h-5 w-5 accent-blue-600 rounded border-gray-300'
                   />
-                </div>
+                </div> */}
               </div>
             </div>
-
-            {/* Mensajes de error */}
-            {updateUser.error && (
-              <Alert variant='destructive'>
-                <AlertCircle className='h-4 w-4' />
-                <AlertDescription>
-                  Error al actualizar usuario: {updateUser.error.message}
-                </AlertDescription>
-              </Alert>
-            )}
 
             {/* Botones de acción */}
             <div className='flex justify-end space-x-2'>
@@ -380,7 +395,10 @@ export function UserForm({
                 <X className='mr-2 h-4 w-4' />
                 Cancelar
               </Button>
-              <Button type='submit' disabled={updateUser.isPending}>
+              <Button
+                type='submit'
+                disabled={updateUser.isPending || !form.formState.isValid}
+              >
                 {updateUser.isPending ? (
                   <>
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />

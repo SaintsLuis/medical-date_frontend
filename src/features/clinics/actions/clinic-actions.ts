@@ -66,7 +66,7 @@ export async function getAllClinics(): Promise<ServerApiResponse<Clinic[]>> {
 export async function getAllActiveClinics(): Promise<
   ServerApiResponse<Clinic[]>
 > {
-  return serverApi.get<Clinic[]>('/clinics/active')
+  return serverApi.get<Clinic[]>('/clinics/all')
 }
 
 /**
