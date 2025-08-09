@@ -16,7 +16,7 @@ export const loginSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
       'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial'
     ),
-  userType: z.enum(['admin', 'doctor', 'auto'], {
+  userType: z.enum(['admin', 'doctor', 'secretary', 'auto'], {
     required_error: 'Seleccione un tipo de usuario',
   }),
   rememberMe: z.boolean().optional(),

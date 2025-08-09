@@ -17,6 +17,8 @@ const protectedRoutes = [
   '/analytics',
   '/settings',
   '/profile',
+  '/secretaries', // Administrative management of secretaries
+  '/users', // User management
 ]
 
 export function middleware(request: NextRequest) {

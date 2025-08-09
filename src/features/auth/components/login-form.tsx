@@ -23,6 +23,7 @@ import {
   Loader2,
   Shield,
   Stethoscope,
+  UserCheck,
   Eye,
   EyeOff,
   Lock,
@@ -86,7 +87,9 @@ export function LoginForm() {
     }
   }
 
-  const handleUserTypeSelect = (type: 'admin' | 'doctor' | 'auto') => {
+  const handleUserTypeSelect = (
+    type: 'admin' | 'doctor' | 'secretary' | 'auto'
+  ) => {
     setValue('userType', type)
   }
 
@@ -155,6 +158,19 @@ export function LoginForm() {
                   >
                     <Stethoscope className='h-4 w-4' />
                     <span>Doctor</span>
+                  </button>
+
+                  <button
+                    type='button'
+                    onClick={() => handleUserTypeSelect('secretary')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md font-medium text-sm transition-all duration-200 ${
+                      watchedUserType === 'secretary'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <UserCheck className='h-4 w-4' />
+                    <span>Secretaria</span>
                   </button>
                 </div>
 

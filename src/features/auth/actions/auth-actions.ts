@@ -7,7 +7,7 @@ import { config } from '@/config/app'
 interface LoginFormData {
   email: string
   password: string
-  userType: 'admin' | 'doctor' | 'auto'
+  userType: 'admin' | 'doctor' | 'secretary' | 'auto'
 }
 
 interface AuthResponse {
@@ -34,6 +34,8 @@ export async function loginAction(
     let endpoint = '/auth/login/admin' // Por defecto admin
     if (formData.userType === 'doctor') {
       endpoint = '/auth/login/doctor'
+    } else if (formData.userType === 'secretary') {
+      endpoint = '/auth/login-secretary'
     }
 
     console.log(`Login attempt for: ${formData.email} as ${formData.userType}`)
