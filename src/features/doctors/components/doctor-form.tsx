@@ -39,6 +39,7 @@ import {
   X,
   Loader2,
   Calendar,
+  Video,
 } from 'lucide-react'
 import { useAllActiveSpecialties } from '@/features/specialties/hooks/use-specialties'
 import { useAllActiveClinics } from '@/features/clinics'
@@ -93,6 +94,15 @@ const doctorFormSchema = z.object({
     .min(0, 'La experiencia debe ser al menos 0 años')
     .max(50, 'La experiencia no puede exceder 50 años'),
   timeZone: z.string().min(1, 'La zona horaria es requerida'),
+  meetingLink: z
+    .string()
+    .url('Debe ser una URL válida')
+    .regex(
+      /^https:\/\/meet\.google\.com\/[a-z0-9\-]+$/,
+      'Debe ser un enlace válido de Google Meet'
+    )
+    .optional()
+    .or(z.literal('')),
   publicEmail: z.string(),
   publicPhone: z.string(),
   education: z.array(z.string()),
@@ -122,6 +132,7 @@ const defaultValues: DoctorFormData = {
   consultationFee: 0,
   experience: 0,
   timeZone: 'America/Santo_Domingo',
+  meetingLink: '',
   publicEmail: '',
   publicPhone: '',
   education: ['Universidad Nacional - Medicina'],
@@ -276,6 +287,7 @@ export function DoctorForm({
         consultationFee: doctor.consultationFee,
         experience: doctor.experience,
         timeZone: doctor.timeZone,
+        meetingLink: doctor.meetingLink || '',
         publicEmail: doctor.publicEmail || '',
         publicPhone: doctor.publicPhone || '',
         specialtyIds: doctor.specialties.map((s) => s.id),
@@ -392,6 +404,9 @@ export function DoctorForm({
           experience: data.experience,
           languages: languages,
           timeZone: data.timeZone,
+          meetingLink: data.meetingLink || undefined,
+          specialtyIds: data.specialtyIds,
+          clinicIds: data.clinicIds,
         }
 
         const result = await createDoctorAction(createData)
@@ -843,6 +858,27 @@ export function DoctorForm({
                 {errors.timeZone && (
                   <p className='text-sm text-red-600'>
                     {String(errors.timeZone?.message)}
+                  </p>
+                )}
+              </div>
+
+              <div className='space-y-2'>
+                <Label className='flex items-center gap-2'>
+                  <Video className='h-4 w-4' />
+                  Enlace de Google Meet (Opcional)
+                </Label>
+                <Input
+                  type='url'
+                  placeholder='https://meet.google.com/abc-defg-hij'
+                  {...register('meetingLink')}
+                />
+                <p className='text-xs text-muted-foreground'>
+                  Enlace permanente de Google Meet para citas virtuales. Los
+                  pacientes verán este enlace cuando confirmes una cita virtual.
+                </p>
+                {errors.meetingLink && (
+                  <p className='text-sm text-red-600'>
+                    {String(errors.meetingLink?.message)}
                   </p>
                 )}
               </div>

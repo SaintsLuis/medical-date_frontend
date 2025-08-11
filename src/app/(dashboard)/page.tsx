@@ -61,23 +61,38 @@ export default function DashboardPage() {
   const userRoles = user?.roles || []
   const isAdmin = userRoles.includes(UserRole.ADMIN)
   const isDoctor = userRoles.includes(UserRole.DOCTOR)
+  const isSecretary = userRoles.includes(UserRole.SECRETARY)
 
   return (
     <div className='space-y-8'>
       <div>
         <h1 className='text-3xl font-bold tracking-tight'>
-          {isAdmin ? 'Dashboard Administrativo' : 'Dashboard del Doctor'}
+          {isAdmin
+            ? 'Dashboard Administrativo'
+            : isDoctor
+            ? 'Dashboard del Doctor'
+            : isSecretary
+            ? 'Dashboard de Secretaria'
+            : 'Dashboard'}
         </h1>
         <p className='text-muted-foreground'>
           {isAdmin
             ? 'Resumen general del sistema médico'
-            : 'Métricas y análisis de tu práctica médica'}
+            : isDoctor
+            ? 'Métricas y análisis de tu práctica médica'
+            : isSecretary
+            ? 'Gestión de citas y pacientes asignados'
+            : 'Panel de control'}
         </p>
       </div>
 
       {/* Suspense boundaries para diferentes secciones */}
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent isAdmin={isAdmin} isDoctor={isDoctor} />
+        <DashboardContent
+          isAdmin={isAdmin}
+          isDoctor={isDoctor}
+          isSecretary={isSecretary}
+        />
       </Suspense>
     </div>
   )
@@ -87,9 +102,11 @@ export default function DashboardPage() {
 function DashboardContent({
   isAdmin,
   isDoctor,
+  isSecretary,
 }: {
   isAdmin: boolean
   isDoctor: boolean
+  isSecretary: boolean
 }) {
   // Si es admin, mostrar dashboard administrativo
   if (isAdmin) {
@@ -135,6 +152,26 @@ function DashboardContent({
 
         {/* Gráficos y tendencias */}
         <DoctorDashboardCharts />
+      </div>
+    )
+  }
+
+  // Si es secretaria, mostrar dashboard de secretaria
+  if (isSecretary) {
+    return (
+      <div className='space-y-8'>
+        <Card>
+          <CardHeader>
+            <h3 className='text-lg font-semibold'>Dashboard de Secretaria</h3>
+          </CardHeader>
+          <CardContent>
+            <p className='text-muted-foreground'>
+              Dashboard específico para secretarias estará disponible
+              próximamente. Aquí podrás gestionar citas, pacientes y horarios de
+              los doctores asignados.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

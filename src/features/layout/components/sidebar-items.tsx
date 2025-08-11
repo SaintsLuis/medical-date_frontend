@@ -33,13 +33,19 @@ const DIRECT_ITEMS = [
     name: 'Dashboard',
     href: '/',
     icon: 'BarChart3',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
+    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
   {
     name: 'Citas',
     href: '/appointments',
     icon: 'Calendar',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
+    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
+  },
+  {
+    name: 'Pacientes',
+    href: '/patients',
+    icon: 'Users',
+    roles: [UserRole.SECRETARY], // Solo para secretarias en menú directo
   },
   {
     name: 'Clínicas',
@@ -51,7 +57,7 @@ const DIRECT_ITEMS = [
     name: 'Facturación',
     href: '/billing',
     icon: 'CreditCard',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
+    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
   {
     name: 'Expedientes',
@@ -75,7 +81,7 @@ const DIRECT_ITEMS = [
     name: 'Configuración',
     href: '/settings',
     icon: 'Settings',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
+    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
 ]
 
@@ -99,6 +105,11 @@ const GROUPED_ITEMS = [
       {
         name: 'Doctores',
         href: '/doctors',
+        roles: [UserRole.ADMIN], // Solo Admin
+      },
+      {
+        name: 'Secretarias',
+        href: '/secretaries',
         roles: [UserRole.ADMIN], // Solo Admin
       },
     ],

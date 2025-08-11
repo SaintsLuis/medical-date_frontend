@@ -5,6 +5,7 @@ export enum UserRole {
   PATIENT = 'patient',
   DOCTOR = 'doctor',
   ADMIN = 'admin',
+  SECRETARY = 'secretary',
 }
 
 export enum Permission {
@@ -23,6 +24,12 @@ export enum Permission {
   MANAGE_MEDICAL_RECORDS = 'MANAGE_MEDICAL_RECORDS',
   MANAGE_PRESCRIPTIONS = 'MANAGE_PRESCRIPTIONS',
   VIEW_PATIENTS = 'VIEW_PATIENTS',
+
+  // Secretary permissions
+  SECRETARY_MANAGE_APPOINTMENTS = 'SECRETARY_MANAGE_APPOINTMENTS',
+  SECRETARY_MANAGE_PATIENTS = 'SECRETARY_MANAGE_PATIENTS',
+  SECRETARY_VIEW_BILLING = 'SECRETARY_VIEW_BILLING',
+  SECRETARY_MANAGE_BILLING = 'SECRETARY_MANAGE_BILLING',
 
   // Patient permissions
   VIEW_OWN_APPOINTMENTS = 'VIEW_OWN_APPOINTMENTS',
@@ -201,6 +208,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.MANAGE_PRESCRIPTIONS,
     Permission.VIEW_PATIENTS,
   ],
+  [UserRole.SECRETARY]: [
+    Permission.SECRETARY_MANAGE_APPOINTMENTS,
+    Permission.SECRETARY_MANAGE_PATIENTS,
+    Permission.SECRETARY_VIEW_BILLING,
+    Permission.SECRETARY_MANAGE_BILLING,
+    Permission.VIEW_APPOINTMENTS,
+    Permission.VIEW_PATIENTS,
+  ],
   [UserRole.PATIENT]: [
     Permission.VIEW_OWN_APPOINTMENTS,
     Permission.BOOK_APPOINTMENTS,
@@ -222,6 +237,7 @@ export interface DoctorProfile {
   languages: string[]
   timeZone: string
   profilePhoto?: string
+  meetingLink?: string
   specialties: DoctorSpecialty[]
   clinics: DoctorClinic[]
 }

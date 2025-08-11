@@ -128,6 +128,18 @@ export function DoctorOnlyRoute({ children }: { children: React.ReactNode }) {
   )
 }
 
+export function SecretaryOnlyRoute({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ProtectedRoute requiredRoles={[UserRole.SECRETARY]}>
+      {children}
+    </ProtectedRoute>
+  )
+}
+
 export function AdminOrDoctorRoute({
   children,
 }: {
