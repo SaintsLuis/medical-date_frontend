@@ -25,9 +25,7 @@ export interface Appointment {
   type: AppointmentType
   status: AppointmentStatus
   notes?: string
-  videoLink?: string
-  meetingId?: string
-  meetingPassword?: string
+  videoLink?: string // Campo calculado del meetingLink del doctor (solo para VIRTUAL+CONFIRMED)
   price?: number
   reminderSent: boolean
   confirmationSent: boolean
@@ -82,9 +80,7 @@ export interface BackendAppointment {
   type: AppointmentType
   status: AppointmentStatus
   notes?: string
-  videoLink?: string
-  meetingId?: string
-  meetingPassword?: string
+  videoLink?: string // Campo calculado del meetingLink del doctor (solo para VIRTUAL+CONFIRMED)
   price?: number
   reminderSent: boolean
   confirmationSent: boolean
@@ -137,9 +133,6 @@ export interface CreateAppointmentData {
   duration: number
   type: AppointmentType
   notes?: string
-  videoLink?: string
-  meetingId?: string
-  meetingPassword?: string
   price?: number
   isRecurring?: boolean
   recurringPattern?: string
@@ -152,9 +145,6 @@ export interface UpdateAppointmentData {
   type?: AppointmentType
   status?: AppointmentStatus
   notes?: string
-  videoLink?: string
-  meetingId?: string
-  meetingPassword?: string
   price?: number
   cancelledReason?: string
 }

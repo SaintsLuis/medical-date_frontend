@@ -3,6 +3,7 @@
 import { AppointmentsList } from '@/features/appointments/components/appointments-list'
 import { MedicalCalendar } from '@/features/appointments/components/medical-calendar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { JoinMeetButton } from '@/components/dashboard/join-meet-button'
 import {
   useAppointments,
   useCreateAppointment,
@@ -139,9 +140,6 @@ export default function AppointmentsDashboard() {
         type: appointmentData.type as 'IN_PERSON' | 'VIRTUAL',
         notes: appointmentData.notes as string,
         price: appointmentData.price as number,
-        videoLink: appointmentData.videoLink as string,
-        meetingId: appointmentData.meetingId as string,
-        meetingPassword: appointmentData.meetingPassword as string,
       }
 
       console.log('📝 AppointmentsPage: Transformed create data:', createData)
@@ -213,9 +211,6 @@ export default function AppointmentsDashboard() {
           | 'NO_SHOW',
         notes: appointmentData.notes as string,
         price: appointmentData.price as number,
-        videoLink: appointmentData.videoLink as string,
-        meetingId: appointmentData.meetingId as string,
-        meetingPassword: appointmentData.meetingPassword as string,
       }
 
       console.log(
@@ -275,11 +270,15 @@ export default function AppointmentsDashboard() {
 
   return (
     <div className='h-full flex flex-col space-y-6'>
-      <div>
-        <h1 className='text-2xl font-bold tracking-tight'>Citas Médicas</h1>
-        <p className='text-muted-foreground'>
-          Gestiona todas las citas del sistema con calendario avanzado
-        </p>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold tracking-tight'>Citas Médicas</h1>
+          <p className='text-muted-foreground'>
+            Gestiona todas las citas del sistema con calendario avanzado
+          </p>
+        </div>
+        {/* Botón de Unirse a Meet para doctores */}
+        <JoinMeetButton />
       </div>
 
       <Tabs defaultValue='calendar' className='flex-1 flex flex-col'>

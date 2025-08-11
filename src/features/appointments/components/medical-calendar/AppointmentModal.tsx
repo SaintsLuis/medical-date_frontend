@@ -31,6 +31,7 @@ import {
   Save,
   X,
   AlertTriangle,
+  Monitor,
 } from 'lucide-react'
 
 // Types
@@ -54,9 +55,6 @@ interface AppointmentFormData {
   status: AppointmentStatus
   notes: string
   price?: number
-  videoLink?: string
-  meetingId?: string
-  meetingPassword?: string
   isRecurring: boolean
   recurringPattern?: RecurringAppointmentPattern
   reminderMinutes: number[]
@@ -78,9 +76,6 @@ const DEFAULT_FORM_DATA: AppointmentFormData = {
   status: 'SCHEDULED',
   notes: '',
   price: 0,
-  videoLink: '',
-  meetingId: '',
-  meetingPassword: '',
   isRecurring: false,
   recurringPattern: undefined,
   reminderMinutes: [15],
@@ -219,9 +214,6 @@ export function AppointmentModal({
         status: appointment.status || 'SCHEDULED',
         notes: appointment.notes || '',
         price: appointment.price || 0,
-        videoLink: appointment.videoLink || '',
-        meetingId: appointment.meetingId || '',
-        meetingPassword: appointment.meetingPassword || '',
         isRecurring: appointment.isRecurring || false,
         recurringPattern: appointment.recurringPattern
           ? {
@@ -325,9 +317,6 @@ export function AppointmentModal({
         status: appointment.status || 'SCHEDULED',
         notes: appointment.notes || '',
         price: appointment.price || 0,
-        videoLink: appointment.videoLink || '',
-        meetingId: appointment.meetingId || '',
-        meetingPassword: appointment.meetingPassword || '',
         isRecurring: appointment.isRecurring || false,
         recurringPattern: appointment.recurringPattern
           ? {
@@ -580,11 +569,6 @@ export function AppointmentModal({
         : 'No tiene permisos para crear citas virtuales'
     }
 
-    if (formData.type === 'VIRTUAL' && !formData.videoLink) {
-      newErrors.videoLink =
-        'El enlace de video es requerido para citas virtuales'
-    }
-
     if (formData.price && formData.price < 0) {
       newErrors.price = 'El precio no puede ser negativo'
     }
@@ -635,12 +619,6 @@ export function AppointmentModal({
           status: formData.status,
           notes: formData.notes,
           price: formData.price,
-          // Solo incluir campos de video si la cita es virtual
-          ...(formData.type === 'VIRTUAL' && {
-            videoLink: formData.videoLink,
-            meetingId: formData.meetingId,
-            meetingPassword: formData.meetingPassword,
-          }),
         }
         console.log(
           '📝 AppointmentModal: Update data prepared:',
@@ -722,12 +700,6 @@ export function AppointmentModal({
           status: formData.status,
           notes: formData.notes,
           price: formData.price,
-          // Solo incluir campos de video para citas virtuales
-          ...(formData.type === 'VIRTUAL' && {
-            videoLink: formData.videoLink,
-            meetingId: formData.meetingId,
-            meetingPassword: formData.meetingPassword,
-          }),
           isRecurring: formData.isRecurring,
           recurringPattern: formData.recurringPattern?.type.toUpperCase() as
             | 'DAILY'
@@ -795,19 +767,6 @@ export function AppointmentModal({
     setFormData(DEFAULT_FORM_DATA)
     setErrors({})
     onClose()
-  }
-
-  const generateMeetingLink = () => {
-    const meetingId = `meeting-${Date.now()}`
-    const baseUrl = 'https://meet.google.com/'
-    const meetingLink = `${baseUrl}${meetingId}`
-
-    setFormData((prev) => ({
-      ...prev,
-      videoLink: meetingLink,
-      meetingId,
-      meetingPassword: Math.random().toString(36).substring(7),
-    }))
   }
 
   // ==============================================
@@ -1203,60 +1162,38 @@ export function AppointmentModal({
             exit={{ opacity: 0, height: 0 }}
             className='space-y-4 p-4 border rounded-lg bg-blue-50'
           >
-            <div className='flex items-center justify-between'>
-              <Label className='text-sm font-medium'>
-                Configuración de Reunión Virtual
+            <div className='flex items-center gap-2'>
+              <Monitor className='h-5 w-5 text-blue-600' />
+              <Label className='text-sm font-medium text-blue-800'>
+                Cita Virtual
               </Label>
-              <Button
-                type='button'
-                size='sm'
-                onClick={generateMeetingLink}
-                disabled={isSubmitting}
-              >
-                Generar enlace
-              </Button>
             </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='videoLink'>Enlace de video *</Label>
-              <Input
-                id='videoLink'
-                value={formData.videoLink}
-                onChange={(e) => handleInputChange('videoLink', e.target.value)}
-                placeholder='https://meet.google.com/...'
-                disabled={isSubmitting}
-              />
-              {errors.videoLink && (
-                <p className='text-sm text-red-600'>{errors.videoLink}</p>
-              )}
-            </div>
-
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='meetingId'>ID de reunión</Label>
-                <Input
-                  id='meetingId'
-                  value={formData.meetingId}
-                  onChange={(e) =>
-                    handleInputChange('meetingId', e.target.value)
-                  }
-                  placeholder='meeting-id'
-                  disabled={isSubmitting}
-                />
+            <p className='text-sm text-blue-700'>
+              {appointment?.videoLink
+                ? 'El enlace de la reunión virtual estará disponible cuando la cita sea confirmada.'
+                : 'Esta es una cita virtual. El enlace de reunión se generará automáticamente usando el enlace permanente del doctor cuando la cita sea confirmada.'}
+            </p>
+            {appointment?.videoLink && appointment.status === 'CONFIRMED' && (
+              <div className='p-3 bg-white rounded border'>
+                <Label className='text-sm font-medium'>
+                  Enlace de reunión:
+                </Label>
+                <div className='flex items-center gap-2 mt-1'>
+                  <Input
+                    value={appointment.videoLink}
+                    readOnly
+                    className='text-sm'
+                  />
+                  <Button
+                    type='button'
+                    size='sm'
+                    onClick={() => window.open(appointment.videoLink, '_blank')}
+                  >
+                    Abrir
+                  </Button>
+                </div>
               </div>
-              <div className='space-y-2'>
-                <Label htmlFor='meetingPassword'>Contraseña</Label>
-                <Input
-                  id='meetingPassword'
-                  value={formData.meetingPassword}
-                  onChange={(e) =>
-                    handleInputChange('meetingPassword', e.target.value)
-                  }
-                  placeholder='password'
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
+            )}
           </motion.div>
         )}
 

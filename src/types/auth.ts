@@ -237,6 +237,7 @@ export interface DoctorProfile {
   languages: string[]
   timeZone: string
   profilePhoto?: string
+  meetingLink?: string
   specialties: DoctorSpecialty[]
   clinics: DoctorClinic[]
 }

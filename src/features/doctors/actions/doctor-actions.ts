@@ -94,15 +94,18 @@ export async function createDoctorAction(
   console.log('🆕 Creating new doctor:', {
     email: data.email,
     firstName: data.firstName,
+    specialtyIds: data.specialtyIds?.length || 0,
+    clinicIds: data.clinicIds?.length || 0,
   })
 
+  // Ahora el backend soporta specialtyIds y clinicIds directamente
   const result = await serverApi.post<CreateDoctorResponse>(
     '/auth/create-doctor',
     data
   )
 
   if (result.success) {
-    console.log('✅ Doctor created successfully:', result.data?.doctorId)
+    console.log('✅ Doctor created successfully with specialties and clinics')
     revalidatePath('/(dashboard)/doctors')
   } else {
     console.error('❌ Failed to create doctor:', result.error)

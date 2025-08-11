@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useDoctorDashboardMetrics } from '../hooks/use-doctor-dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
+// import { JoinMeetButton } from '@/components/dashboard/join-meet-button'
 
 interface MetricCardProps {
   title: string
@@ -120,6 +121,9 @@ export function DoctorDashboardMetrics() {
 
   return (
     <div className='space-y-6'>
+      {/* Botón para unirse a Meet
+      <JoinMeetButton /> */}
+
       {/* Métricas principales */}
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
         {/* Citas de hoy */}

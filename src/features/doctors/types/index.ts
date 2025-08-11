@@ -26,6 +26,7 @@ export interface Doctor {
   experience: number
   languages: string[]
   timeZone: string
+  meetingLink?: string
   publicEmail?: string
   publicPhone?: string
   certifications?: string[]
@@ -113,6 +114,9 @@ export interface CreateDoctorData {
   experience: number
   languages: string[]
   timeZone: string
+  meetingLink?: string
+  specialtyIds?: string[]
+  clinicIds?: string[]
 }
 
 /**
@@ -127,7 +131,9 @@ export interface UpdateDoctorData {
   experience?: number
   languages?: string[]
   timeZone?: string
+  meetingLink?: string
   specialtyIds?: string[]
+  clinicIds?: string[]
 }
 
 /**
@@ -200,6 +206,7 @@ export interface DoctorFormData {
   experience: number
   languages: string[]
   timeZone: string
+  meetingLink?: string
   publicEmail: string
   publicPhone: string
   certifications: string[]
@@ -226,6 +233,7 @@ export const DOCTOR_FORM_DEFAULTS: DoctorFormData = {
   experience: 0,
   languages: ['Español'],
   timeZone: 'America/Santo_Domingo',
+  meetingLink: '',
   publicEmail: '',
   publicPhone: '',
   certifications: [''],
