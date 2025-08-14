@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Medical Date - Healthcare Management Dashboard',
+  title: 'Medical Date - Plataforma de Gestión Medica',
   description:
-    'Comprehensive healthcare management platform for medical professionals',
+    'Plataforma integral de gestión sanitaria para profesionales médicos    y pacientes. Administra citas, pacientes, clínicas y más con facilidad.',
 }
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang='en'>
+    <html lang='es'>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

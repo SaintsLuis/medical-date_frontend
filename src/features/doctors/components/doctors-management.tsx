@@ -6,14 +6,12 @@ import {
   Trash2,
   Plus,
   Search,
-  Filter,
   RefreshCw,
   Power,
   PowerOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -31,19 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
-import { useAllActiveSpecialties } from '@/features/specialties/hooks/use-specialties'
-import { useAllActiveClinics } from '@/features/clinics'
 import {
   useDoctors,
   useDoctorStats,
@@ -52,7 +40,6 @@ import {
 } from '../hooks/use-doctors'
 import { DoctorForm } from './doctor-form'
 import type { Doctor } from '../types'
-import Link from 'next/link'
 
 // Importar componentes de gráficos
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'

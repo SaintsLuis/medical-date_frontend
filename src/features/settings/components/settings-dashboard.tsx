@@ -2,214 +2,128 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Settings,
-  User,
   Shield,
   Bell,
   Palette,
   Database,
-  Globe,
-  Save,
-  RefreshCw,
   Download,
   Upload,
   Trash2,
-  Eye,
-  EyeOff,
 } from 'lucide-react'
+import { BackendUser } from '@/types/auth'
+import { ProfileEditForm } from './profile-edit-form'
+import { ChangePasswordForm } from './change-password-form'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-export function SettingsDashboard() {
-  const [activeTab, setActiveTab] = useState('general')
-  const [showPassword, setShowPassword] = useState(false)
+interface SettingsDashboardProps {
+  userData: BackendUser
+}
 
-  const handleSave = () => {
-    // Handle save logic
-    console.log('Settings saved')
-  }
-
-  const handleReset = () => {
-    // Handle reset logic
-    console.log('Settings reset')
-  }
+export function SettingsDashboard({ userData }: SettingsDashboardProps) {
+  const [activeTab, setActiveTab] = useState('profile')
 
   return (
     <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='text-3xl font-bold tracking-tight'>Configuración</h1>
+          <p className='text-muted-foreground'>
+            Gestiona tu perfil, contraseña y preferencias del sistema
+          </p>
+        </div>
+      </div>
+
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className='space-y-4'
       >
         <TabsList className='grid w-full grid-cols-6'>
-          <TabsTrigger value='general'>General</TabsTrigger>
-          <TabsTrigger value='profile'>Profile</TabsTrigger>
-          <TabsTrigger value='security'>Security</TabsTrigger>
-          <TabsTrigger value='notifications'>Notifications</TabsTrigger>
-          <TabsTrigger value='appearance'>Appearance</TabsTrigger>
-          <TabsTrigger value='advanced'>Advanced</TabsTrigger>
+          <TabsTrigger value='profile'>Perfil</TabsTrigger>
+          <TabsTrigger value='security'>Seguridad</TabsTrigger>
+          <TabsTrigger value='notifications'>Notificaciones</TabsTrigger>
+          <TabsTrigger value='appearance'>Apariencia</TabsTrigger>
+          <TabsTrigger value='data'>Datos</TabsTrigger>
+          <TabsTrigger value='advanced'>Avanzado</TabsTrigger>
         </TabsList>
 
-        <TabsContent value='general' className='space-y-4'>
-          <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure basic application settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium'>Language</label>
-                  <Select defaultValue='es'>
-                    <SelectTrigger>
-                      <SelectValue placeholder='Select language' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='es'>Español</SelectItem>
-                      <SelectItem value='en'>English</SelectItem>
-                      <SelectItem value='fr'>Français</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium'>Time Zone</label>
-                  <Select defaultValue='utc-5'>
-                    <SelectTrigger>
-                      <SelectValue placeholder='Select timezone' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='utc-5'>
-                        UTC-5 (Eastern Time)
-                      </SelectItem>
-                      <SelectItem value='utc-6'>
-                        UTC-6 (Central Time)
-                      </SelectItem>
-                      <SelectItem value='utc-7'>
-                        UTC-7 (Mountain Time)
-                      </SelectItem>
-                      <SelectItem value='utc-8'>
-                        UTC-8 (Pacific Time)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Date Format</label>
-                <Select defaultValue='mm/dd/yyyy'>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select date format' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='mm/dd/yyyy'>MM/DD/YYYY</SelectItem>
-                    <SelectItem value='dd/mm/yyyy'>DD/MM/YYYY</SelectItem>
-                    <SelectItem value='yyyy-mm-dd'>YYYY-MM-DD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value='profile' className='space-y-4'>
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Settings</CardTitle>
-              <CardDescription>
-                Update your personal information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium'>First Name</label>
-                  <Input placeholder='Enter first name' />
-                </div>
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium'>Last Name</label>
-                  <Input placeholder='Enter last name' />
-                </div>
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Email</label>
-                <Input type='email' placeholder='Enter email address' />
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Phone</label>
-                <Input placeholder='Enter phone number' />
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Bio</label>
-                <Input placeholder='Enter bio' />
-              </div>
-            </CardContent>
-          </Card>
+          <ProfileEditForm
+            userData={userData}
+            onSuccess={() => {
+              console.log('Profile updated successfully')
+            }}
+          />
         </TabsContent>
 
         <TabsContent value='security' className='space-y-4'>
+          <ChangePasswordForm
+            onSuccess={() => {
+              console.log('Password changed successfully')
+            }}
+          />
+
+          {/* Información adicional de seguridad */}
           <Card>
             <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>Manage your account security</CardDescription>
+              <CardTitle className='flex items-center gap-2'>
+                <Shield className='h-5 w-5' />
+                Configuración de Seguridad
+              </CardTitle>
+              <CardDescription>
+                Configuraciones adicionales para mantener tu cuenta segura
+              </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Current Password</label>
-                <div className='relative'>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder='Enter current password'
-                  />
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='sm'
-                    className='absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent'
-                    onClick={() => setShowPassword(!showPassword)}
+              <div className='space-y-4'>
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
+                  <div>
+                    <div className='text-sm font-medium'>
+                      Verificación de Email
+                    </div>
+                    <div className='text-sm text-muted-foreground'>
+                      Estado de verificación de tu correo electrónico
+                    </div>
+                  </div>
+                  <Badge
+                    variant={userData.emailVerified ? 'default' : 'secondary'}
                   >
-                    {showPassword ? (
-                      <EyeOff className='h-4 w-4' />
-                    ) : (
-                      <Eye className='h-4 w-4' />
-                    )}
-                  </Button>
+                    {userData.emailVerified ? 'Verificado' : 'No Verificado'}
+                  </Badge>
                 </div>
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>New Password</label>
-                <Input type='password' placeholder='Enter new password' />
-              </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Confirm Password</label>
-                <Input type='password' placeholder='Confirm new password' />
-              </div>
-              <Separator />
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>
-                  Two-Factor Authentication
-                </label>
-                <div className='flex items-center space-x-2'>
-                  <Badge variant='outline'>Disabled</Badge>
-                  <Button size='sm'>Enable</Button>
+
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
+                  <div>
+                    <div className='text-sm font-medium'>
+                      Autenticación de Dos Factores
+                    </div>
+                    <div className='text-sm text-muted-foreground'>
+                      Agrega una capa extra de seguridad a tu cuenta
+                    </div>
+                  </div>
+                  <Badge variant='outline'>Próximamente</Badge>
+                </div>
+
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
+                  <div>
+                    <div className='text-sm font-medium'>Sesiones Activas</div>
+                    <div className='text-sm text-muted-foreground'>
+                      Gestiona las sesiones activas en tus dispositivos
+                    </div>
+                  </div>
+                  <Button size='sm' variant='outline' disabled>
+                    Ver Sesiones
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -219,45 +133,23 @@ export function SettingsDashboard() {
         <TabsContent value='notifications' className='space-y-4'>
           <Card>
             <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
+              <CardTitle className='flex items-center gap-2'>
+                <Bell className='h-5 w-5' />
+                Preferencias de Notificación
+              </CardTitle>
               <CardDescription>
-                Configure your notification preferences
+                Configura cómo y cuándo quieres recibir notificaciones
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <div className='space-y-4'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm font-medium'>
-                      Email Notifications
-                    </div>
-                    <div className='text-sm text-muted-foreground'>
-                      Receive notifications via email
-                    </div>
-                  </div>
-                  <Badge variant='default'>Enabled</Badge>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm font-medium'>
-                      Push Notifications
-                    </div>
-                    <div className='text-sm text-muted-foreground'>
-                      Receive push notifications
-                    </div>
-                  </div>
-                  <Badge variant='secondary'>Disabled</Badge>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm font-medium'>SMS Notifications</div>
-                    <div className='text-sm text-muted-foreground'>
-                      Receive SMS notifications
-                    </div>
-                  </div>
-                  <Badge variant='secondary'>Disabled</Badge>
-                </div>
-              </div>
+              <Alert>
+                <Bell className='h-4 w-4' />
+                <AlertDescription>
+                  Las configuraciones de notificación estarán disponibles
+                  próximamente. Por ahora, recibirás notificaciones importantes
+                  por email.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </TabsContent>
@@ -265,39 +157,73 @@ export function SettingsDashboard() {
         <TabsContent value='appearance' className='space-y-4'>
           <Card>
             <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
+              <CardTitle className='flex items-center gap-2'>
+                <Palette className='h-5 w-5' />
+                Apariencia
+              </CardTitle>
               <CardDescription>
-                Customize the application appearance
+                Personaliza la apariencia de la aplicación
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Theme</label>
-                <Select defaultValue='light'>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select theme' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='light'>Light</SelectItem>
-                    <SelectItem value='dark'>Dark</SelectItem>
-                    <SelectItem value='system'>System</SelectItem>
-                  </SelectContent>
-                </Select>
+              <Alert>
+                <Palette className='h-4 w-4' />
+                <AlertDescription>
+                  Las opciones de personalización de tema estarán disponibles
+                  próximamente.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value='data' className='space-y-4'>
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Database className='h-5 w-5' />
+                Gestión de Datos
+              </CardTitle>
+              <CardDescription>
+                Exporta o gestiona tus datos personales
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='space-y-4'>
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
+                  <div>
+                    <div className='text-sm font-medium'>Exportar Datos</div>
+                    <div className='text-sm text-muted-foreground'>
+                      Descarga una copia de tus datos personales
+                    </div>
+                  </div>
+                  <Button size='sm' variant='outline' disabled>
+                    <Download className='mr-2 h-4 w-4' />
+                    Exportar
+                  </Button>
+                </div>
+
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
+                  <div>
+                    <div className='text-sm font-medium'>Importar Datos</div>
+                    <div className='text-sm text-muted-foreground'>
+                      Importa datos desde otra fuente
+                    </div>
+                  </div>
+                  <Button size='sm' variant='outline' disabled>
+                    <Upload className='mr-2 h-4 w-4' />
+                    Importar
+                  </Button>
+                </div>
               </div>
-              <div className='space-y-2'>
-                <label className='text-sm font-medium'>Color Scheme</label>
-                <Select defaultValue='blue'>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select color scheme' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='blue'>Blue</SelectItem>
-                    <SelectItem value='green'>Green</SelectItem>
-                    <SelectItem value='purple'>Purple</SelectItem>
-                    <SelectItem value='red'>Red</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
+              <Alert>
+                <Database className='h-4 w-4' />
+                <AlertDescription>
+                  Las funciones de exportación e importación de datos estarán
+                  disponibles próximamente.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </TabsContent>
@@ -305,66 +231,81 @@ export function SettingsDashboard() {
         <TabsContent value='advanced' className='space-y-4'>
           <Card>
             <CardHeader>
-              <CardTitle>Advanced Settings</CardTitle>
-              <CardDescription>Advanced configuration options</CardDescription>
+              <CardTitle>Configuración Avanzada</CardTitle>
+              <CardDescription>
+                Opciones avanzadas y acciones administrativas
+              </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='space-y-4'>
-                <div className='flex items-center justify-between'>
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
                   <div>
-                    <div className='text-sm font-medium'>Data Export</div>
+                    <div className='text-sm font-medium'>
+                      Información de la Cuenta
+                    </div>
                     <div className='text-sm text-muted-foreground'>
-                      Export your data
+                      ID: {userData.id}
                     </div>
                   </div>
-                  <Button size='sm' variant='outline'>
-                    <Download className='mr-2 h-4 w-4' />
-                    Export
-                  </Button>
                 </div>
-                <div className='flex items-center justify-between'>
+
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
                   <div>
-                    <div className='text-sm font-medium'>Data Import</div>
+                    <div className='text-sm font-medium'>Fecha de Registro</div>
                     <div className='text-sm text-muted-foreground'>
-                      Import data from file
+                      {new Date(userData.createdAt).toLocaleDateString(
+                        'es-ES',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        }
+                      )}
                     </div>
                   </div>
-                  <Button size='sm' variant='outline'>
-                    <Upload className='mr-2 h-4 w-4' />
-                    Import
-                  </Button>
                 </div>
-                <Separator />
-                <div className='flex items-center justify-between'>
+
+                <div className='flex items-center justify-between p-4 border rounded-lg'>
                   <div>
-                    <div className='text-sm font-medium text-red-600'>
-                      Delete Account
-                    </div>
+                    <div className='text-sm font-medium'>Último Acceso</div>
                     <div className='text-sm text-muted-foreground'>
-                      Permanently delete your account
+                      {userData.lastLoginAt
+                        ? new Date(userData.lastLoginAt).toLocaleDateString(
+                            'es-ES',
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }
+                          )
+                        : 'No disponible'}
                     </div>
                   </div>
-                  <Button size='sm' variant='destructive'>
-                    <Trash2 className='mr-2 h-4 w-4' />
-                    Delete
-                  </Button>
+                </div>
+
+                <div className='border-t pt-4'>
+                  <div className='flex items-center justify-between p-4 border rounded-lg border-red-200 bg-red-50'>
+                    <div>
+                      <div className='text-sm font-medium text-red-800'>
+                        Zona de Peligro
+                      </div>
+                      <div className='text-sm text-red-600'>
+                        Acciones irreversibles para tu cuenta
+                      </div>
+                    </div>
+                    <Button size='sm' variant='destructive' disabled>
+                      <Trash2 className='mr-2 h-4 w-4' />
+                      Eliminar Cuenta
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className='flex justify-end space-x-2'>
-        <Button variant='outline' onClick={handleReset}>
-          <RefreshCw className='mr-2 h-4 w-4' />
-          Reset
-        </Button>
-        <Button onClick={handleSave}>
-          <Save className='mr-2 h-4 w-4' />
-          Save Changes
-        </Button>
-      </div>
     </div>
   )
 }

@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { UseFormWatch, UseFormReset } from 'react-hook-form'
+import { UseFormWatch, UseFormReset, FieldValues } from 'react-hook-form'
 
-interface UseFormPersistenceOptions {
+interface UseFormPersistenceOptions<T extends FieldValues = FieldValues> {
   formKey: string
-  watch: UseFormWatch<any>
-  reset: UseFormReset<any>
+  watch: UseFormWatch<T>
+  reset: UseFormReset<T>
   isDirty: boolean
   enabled?: boolean
   onSuccess?: () => void
@@ -23,7 +23,7 @@ interface UseFormPersistenceOptions {
  * @param options.onSuccess - Callback cuando el formulario se envía exitosamente
  * @param options.onCancel - Callback cuando se cancela el formulario
  */
-export function useFormPersistence({
+export function useFormPersistence<T extends FieldValues = FieldValues>({
   formKey,
   watch,
   reset,
@@ -31,7 +31,7 @@ export function useFormPersistence({
   enabled = true,
   onSuccess,
   onCancel,
-}: UseFormPersistenceOptions) {
+}: UseFormPersistenceOptions<T>) {
   // Cargar datos guardados al inicializar
   useEffect(() => {
     if (typeof window !== 'undefined' && enabled) {

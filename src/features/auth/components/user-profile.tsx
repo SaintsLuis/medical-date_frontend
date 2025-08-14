@@ -20,9 +20,14 @@ import {
   Loader2,
   Building2,
   Heart,
+  Settings,
+  Key,
+  Edit,
 } from 'lucide-react'
 import { logoutAction } from '../actions/auth-actions'
 import { BackendUser, UserRole } from '@/types/auth'
+import { ProfileEditForm } from '@/features/settings/components/profile-edit-form'
+import { ChangePasswordForm } from '@/features/settings/components/change-password-form'
 
 interface UserProfileProps {
   userData: BackendUser | null
@@ -32,6 +37,9 @@ export function UserProfile({ userData }: UserProfileProps) {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState('')
+  const [activeView, setActiveView] = useState<'view' | 'edit' | 'password'>(
+    'view'
+  )
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -45,6 +53,15 @@ export function UserProfile({ userData }: UserProfileProps) {
       setError('Error al cerrar sesión. Inténtalo de nuevo.')
       setIsLoggingOut(false)
     }
+  }
+
+  const handleProfileUpdateSuccess = () => {
+    setActiveView('view')
+    router.refresh() // Actualizar los datos del perfil
+  }
+
+  const handlePasswordChangeSuccess = () => {
+    setActiveView('view')
   }
 
   if (!userData) {
@@ -84,6 +101,8 @@ export function UserProfile({ userData }: UserProfileProps) {
         return <Stethoscope className='h-4 w-4' />
       case UserRole.PATIENT:
         return <Heart className='h-4 w-4' />
+      case UserRole.SECRETARY:
+        return <Building2 className='h-4 w-4' />
       default:
         return <User className='h-4 w-4' />
     }
@@ -97,6 +116,8 @@ export function UserProfile({ userData }: UserProfileProps) {
         return 'bg-green-100 text-green-800 border-green-200'
       case UserRole.PATIENT:
         return 'bg-purple-100 text-purple-800 border-purple-200'
+      case UserRole.SECRETARY:
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -110,6 +131,8 @@ export function UserProfile({ userData }: UserProfileProps) {
         return 'Doctor'
       case UserRole.PATIENT:
         return 'Paciente'
+      case UserRole.SECRETARY:
+        return 'Secretaria'
       default:
         return role
     }
@@ -127,43 +150,106 @@ export function UserProfile({ userData }: UserProfileProps) {
     })
   }
 
+  // Vista de edición de perfil
+  if (activeView === 'edit') {
+    return (
+      <div className='space-y-6'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold'>Editar Perfil</h1>
+            <p className='text-muted-foreground'>
+              Actualiza tu información personal y profesional
+            </p>
+          </div>
+          <Button variant='outline' onClick={() => setActiveView('view')}>
+            Cancelar
+          </Button>
+        </div>
+        <ProfileEditForm
+          userData={userData}
+          onSuccess={handleProfileUpdateSuccess}
+        />
+      </div>
+    )
+  }
+
+  // Vista de cambio de contraseña
+  if (activeView === 'password') {
+    return (
+      <div className='space-y-6'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold'>Cambiar Contraseña</h1>
+            <p className='text-muted-foreground'>
+              Actualiza tu contraseña de acceso
+            </p>
+          </div>
+          <Button variant='outline' onClick={() => setActiveView('view')}>
+            Cancelar
+          </Button>
+        </div>
+        <ChangePasswordForm onSuccess={handlePasswordChangeSuccess} />
+      </div>
+    )
+  }
+
+  // Vista principal del perfil
   return (
     <div className='space-y-6'>
-      {/* Información principal */}
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center justify-between'>
-            <span>Información Personal</span>
-            <Button
-              onClick={handleLogout}
-              variant='outline'
-              size='sm'
-              disabled={isLoggingOut}
-              className='text-red-600 hover:text-red-700 hover:bg-red-50'
-            >
-              {isLoggingOut ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Cerrando...
-                </>
-              ) : (
-                <>
-                  <LogOut className='mr-2 h-4 w-4' />
-                  Cerrar Sesión
-                </>
-              )}
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          {/* Error de logout */}
-          {error && (
-            <Alert variant='destructive'>
-              <AlertCircle className='h-4 w-4' />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+      {/* Botones de acción principales */}
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-3'>
+          <Button
+            onClick={() => setActiveView('edit')}
+            className='flex items-center gap-2'
+          >
+            <Edit className='h-4 w-4' />
+            Editar Perfil
+          </Button>
+          <Button
+            onClick={() => setActiveView('password')}
+            variant='outline'
+            className='flex items-center gap-2'
+          >
+            <Key className='h-4 w-4' />
+            Cambiar Contraseña
+          </Button>
+        </div>
+        <Button
+          onClick={handleLogout}
+          variant='outline'
+          size='sm'
+          disabled={isLoggingOut}
+          className='text-red-600 hover:text-red-700 hover:bg-red-50'
+        >
+          {isLoggingOut ? (
+            <>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              Cerrando...
+            </>
+          ) : (
+            <>
+              <LogOut className='mr-2 h-4 w-4' />
+              Cerrar Sesión
+            </>
           )}
+        </Button>
+      </div>
 
+      {/* Error de logout */}
+      {error && (
+        <Alert variant='destructive'>
+          <AlertCircle className='h-4 w-4' />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Información principal */}
+      <Card className='pb-4'>
+        <CardHeader>
+          <CardTitle>Información Personal</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-6 pb-4'>
           {/* Avatar y información básica */}
           <div className='flex items-start space-x-4'>
             <Avatar className='h-20 w-20'>
@@ -294,6 +380,14 @@ export function UserProfile({ userData }: UserProfileProps) {
                       )}
                   </div>
                 </div>
+                {userData.doctorProfile.bio && (
+                  <div className='text-sm'>
+                    <span className='font-medium'>Biografía:</span>
+                    <p className='text-muted-foreground mt-1'>
+                      {userData.doctorProfile.bio}
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -353,45 +447,47 @@ export function UserProfile({ userData }: UserProfileProps) {
         </CardContent>
       </Card>
 
-      {/* Información del sistema */}
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <Building2 className='h-5 w-5' />
-            Información del Sistema
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-2 text-sm'>
-            <div>
-              <span className='font-medium'>ID de Usuario:</span>
-              <p className='text-muted-foreground font-mono text-xs mt-1'>
-                {userData.id}
-              </p>
-            </div>
-            <div>
-              <span className='font-medium'>Última actualización:</span>
-              <p className='text-muted-foreground mt-1'>
-                {formatDate(userData.updatedAt)}
-              </p>
-            </div>
-            {userData.lastLoginAt && (
+      {/* Información del sistema - Solo para administradores */}
+      {userData.roles.includes(UserRole.ADMIN) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Settings className='h-5 w-5' />
+              Información del Sistema
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='grid gap-4 md:grid-cols-2 text-sm'>
               <div>
-                <span className='font-medium'>Último acceso:</span>
-                <p className='text-muted-foreground mt-1'>
-                  {formatDate(userData.lastLoginAt)}
+                <span className='font-medium'>ID de Usuario:</span>
+                <p className='text-muted-foreground font-mono text-xs mt-1'>
+                  {userData.id}
                 </p>
               </div>
-            )}
-            <div>
-              <span className='font-medium'>Verificación de email:</span>
-              <p className='text-muted-foreground mt-1'>
-                {userData.emailVerified ? 'Verificado' : 'Pendiente'}
-              </p>
+              <div>
+                <span className='font-medium'>Última actualización:</span>
+                <p className='text-muted-foreground mt-1'>
+                  {formatDate(userData.updatedAt)}
+                </p>
+              </div>
+              {userData.lastLoginAt && (
+                <div>
+                  <span className='font-medium'>Último acceso:</span>
+                  <p className='text-muted-foreground mt-1'>
+                    {formatDate(userData.lastLoginAt)}
+                  </p>
+                </div>
+              )}
+              <div>
+                <span className='font-medium'>Verificación de email:</span>
+                <p className='text-muted-foreground mt-1'>
+                  {userData.emailVerified ? 'Verificado' : 'Pendiente'}
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
