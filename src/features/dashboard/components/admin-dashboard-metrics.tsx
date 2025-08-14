@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Calendar,
   FileText,
@@ -15,13 +8,9 @@ import {
   DollarSign,
   TrendingUp,
   Users,
-  Clock,
-  CheckCircle,
   AlertTriangle,
   Stethoscope,
   Building2,
-  UserCheck,
-  CreditCard,
   Activity,
 } from 'lucide-react'
 import { useAdminDashboardMetrics } from '../hooks/use-admin-dashboard'

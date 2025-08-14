@@ -68,12 +68,12 @@ export default function DashboardPage() {
       <div>
         <h1 className='text-3xl font-bold tracking-tight'>
           {isAdmin
-            ? 'Dashboard Administrativo'
+            ? 'Panel de gestión Administrativo'
             : isDoctor
-            ? 'Dashboard del Doctor'
+            ? 'Panel de gestión del Doctor'
             : isSecretary
-            ? 'Dashboard de Secretaria'
-            : 'Dashboard'}
+            ? 'Panel de gestión de Secretaria'
+            : 'Panel de gestión'}
         </h1>
         <p className='text-muted-foreground'>
           {isAdmin

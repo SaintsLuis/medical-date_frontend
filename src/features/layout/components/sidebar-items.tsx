@@ -30,22 +30,16 @@ import { UserRole } from '@/types/auth'
 // Elementos que van directamente a sus rutas (sin agrupar)
 const DIRECT_ITEMS = [
   {
-    name: 'Dashboard',
+    name: 'Panel de gestión',
     href: '/',
     icon: 'BarChart3',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
+    roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin, Doctor
   },
   {
     name: 'Citas',
     href: '/appointments',
     icon: 'Calendar',
     roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
-  },
-  {
-    name: 'Pacientes',
-    href: '/patients',
-    icon: 'Users',
-    roles: [UserRole.SECRETARY], // Solo para secretarias en menú directo
   },
   {
     name: 'Clínicas',
@@ -77,12 +71,12 @@ const DIRECT_ITEMS = [
     icon: 'HeartPulse',
     roles: [UserRole.ADMIN], // Solo Admin
   },
-  {
-    name: 'Configuración',
-    href: '/settings',
-    icon: 'Settings',
-    roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
-  },
+  // {
+  //   name: 'Configuración',
+  //   href: '/settings',
+  //   icon: 'Settings',
+  //   roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
+  // },
 ]
 
 // Elementos agrupados

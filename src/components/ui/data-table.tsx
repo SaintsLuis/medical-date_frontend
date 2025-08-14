@@ -239,14 +239,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 ]
 
 function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
-  const {
-    attributes,
-    listeners,
-    transform,
-    transition,
-    setNodeRef,
-    isDragging,
-  } = useSortable({
+  const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   })
 
@@ -338,8 +331,6 @@ export function DataTable({
       })
     }
   }
-
-  const isMobile = useIsMobile()
 
   return (
     <div className='w-full'>
@@ -465,6 +456,7 @@ export function DataTable({
 
 function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   const [isOpen, setIsOpen] = React.useState(false)
+  const isMobile = useIsMobile()
 
   if (isMobile) {
     return (

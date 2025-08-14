@@ -104,15 +104,6 @@ const getGenderColor = (gender: string): string => {
   return colorMap[gender] || '#6b7280' // Gris por defecto
 }
 
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884D8',
-  '#82CA9D',
-]
-
 export function PatientsManagement() {
   const [activeTab, setActiveTab] = useState(() => {
     // Recuperar el tab activo del localStorage al inicializar

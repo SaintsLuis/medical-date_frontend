@@ -7,15 +7,7 @@ export const loginSchema = z.object({
     .min(1, 'El email es requerido')
     .email('Ingrese un email válido')
     .max(255, 'El email no puede exceder 255 caracteres'),
-  password: z
-    .string()
-    .min(1, 'La contraseña es requerida')
-    .min(8, 'La contraseña debe tener al menos 8 caracteres')
-    .max(128, 'La contraseña no puede exceder 128 caracteres')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-      'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial'
-    ),
+  password: z.string().min(1, 'La contraseña es requerida'),
   userType: z.enum(['admin', 'doctor', 'secretary', 'auto'], {
     required_error: 'Seleccione un tipo de usuario',
   }),
