@@ -124,7 +124,6 @@ export function ConflictResolver({
                             <div className='flex items-center gap-2'>
                               <Stethoscope className='h-3 w-3 text-gray-400' />
                               <span>
-                                Dr.{' '}
                                 {conflict.existingAppointment.doctor?.firstName}{' '}
                                 {conflict.existingAppointment.doctor?.lastName}
                               </span>

@@ -14,6 +14,7 @@ import {
   getProfileAction,
   refreshTokenAction,
 } from '../actions/auth-actions'
+import { getGlobalQueryClient } from '@/providers/react-query-provider'
 
 // Transformador para convertir BackendUser a User
 const transformBackendUser = (backendUser: BackendUser): User => {
@@ -111,8 +112,31 @@ export const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true })
 
+          console.log('🚪 Starting logout process...')
+          const currentUser = get().user
+          console.log(
+            '👤 Current user before logout:',
+            currentUser?.email,
+            currentUser?.id
+          )
+
           // Usar Server Action para logout (maneja cookies y backend)
           await logoutAction()
+          console.log('✅ Server logout completed')
+
+          // 🆕 En Next.js 15, la mejor solución es recargar la página
+          if (typeof window !== 'undefined') {
+            console.log('� Forcing page reload to clear all cache...')
+            window.location.reload()
+            return // No continuar, la página se recargará
+          }
+
+          // Fallback si no estamos en el browser (SSR)
+          const queryClient = getGlobalQueryClient()
+          if (queryClient) {
+            console.log('🗑️ Clearing React Query cache...')
+            queryClient.clear()
+          }
 
           // Limpiar estado local
           set({
@@ -125,8 +149,12 @@ export const useAuthStore = create<AuthStore>()(
           })
         } catch (error) {
           console.error('Logout error:', error)
-          // Limpiar estado de todas formas
-          get().clearAuth()
+          // En caso de error, también recargar la página
+          if (typeof window !== 'undefined') {
+            window.location.reload()
+          } else {
+            get().clearAuth()
+          }
         }
       },
 
@@ -172,11 +200,41 @@ export const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true })
 
+          console.log('🔍 Starting checkAuth...')
+          const currentUser = get().user
+          console.log(
+            '👤 Current user in store:',
+            currentUser?.email,
+            currentUser?.id
+          )
+
           // Usar Server Action para obtener perfil (con auto-refresh incluido)
           const userData = await getProfileAction()
+          console.log('📡 Backend response:', userData?.email, userData?.id)
 
           if (userData) {
             const user = transformBackendUser(userData)
+
+            // 🆕 Si es un usuario diferente al actual, limpiar la caché AGRESIVAMENTE
+            if (currentUser && currentUser.id !== user.id) {
+              console.log('� DIFFERENT USER DETECTED!')
+              console.log(`Previous: ${currentUser.email} (${currentUser.id})`)
+              console.log(`New: ${user.email} (${user.id})`)
+              console.log('🗑️ CLEARING ALL CACHE AND STATE...')
+
+              const queryClient = getGlobalQueryClient()
+              if (queryClient) {
+                await queryClient.clear()
+                console.log('✅ React Query cache cleared')
+              }
+
+              // Limpiar localStorage también
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem(config.AUTH_STORAGE_KEY)
+                console.log('✅ Auth localStorage cleared')
+              }
+            }
+
             const permissions = user.roles.flatMap(
               (role: UserRole) => ROLE_PERMISSIONS[role] || []
             )
@@ -188,7 +246,10 @@ export const useAuthStore = create<AuthStore>()(
               permissions,
               isLoading: false,
             })
+
+            console.log('✅ User set in store:', user.email, user.id)
           } else {
+            console.log('❌ No user data from backend')
             set({
               user: null,
               token: null,
@@ -214,6 +275,8 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       clearAuth: () => {
+        console.log('🧹 clearAuth called')
+
         set({
           user: null,
           token: null,
@@ -223,11 +286,21 @@ export const useAuthStore = create<AuthStore>()(
           isRefreshing: false,
         })
 
-        // Limpiar storage local
+        // 🆕 Limpiar caché de React Query
+        const queryClient = getGlobalQueryClient()
+        if (queryClient) {
+          console.log('🗑️ Clearing React Query cache on clearAuth...')
+          queryClient.clear()
+        }
+
+        // Limpiar storage local AGRESIVAMENTE
         if (typeof window !== 'undefined') {
+          console.log('🗑️ Clearing all localStorage...')
           localStorage.removeItem(config.TOKEN_STORAGE_KEY)
           localStorage.removeItem(config.REFRESH_TOKEN_STORAGE_KEY)
           localStorage.removeItem(config.AUTH_STORAGE_KEY)
+          // Opcional: limpiar todo el localStorage
+          // localStorage.clear()
         }
       },
     }),

@@ -532,7 +532,7 @@ export function MedicalRecordsManagement() {
                                     ? `${record.patient?.firstName || 'N/A'} ${
                                         record.patient?.lastName || 'N/A'
                                       }`
-                                    : `Dr. ${record.doctor?.firstName} ${record.doctor?.lastName}`
+                                    : `${record.doctor?.firstName} ${record.doctor?.lastName}`
 
                                   return displayName
                                 })()}

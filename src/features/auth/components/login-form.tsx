@@ -74,8 +74,19 @@ export function LoginForm() {
       if (result && !result.success) {
         setError(result.error || 'Error al iniciar sesión')
       } else {
+        console.log('✅ Login successful, checking auth...')
+
+        // Verificar que el checkAuth sea exitoso
         await useAuthStore.getState().checkAuth()
-        router.replace('/')
+
+        // 🆕 En Next.js 15, usar router.refresh() y luego navegar
+        console.log('🔄 Refreshing router to ensure fresh cache...')
+        router.refresh() // Refresca los datos del servidor
+
+        // Pequeño delay para asegurar que el refresh termine
+        setTimeout(() => {
+          router.replace('/')
+        }, 100)
       }
     } catch (error) {
       console.error('Login error:', error)
