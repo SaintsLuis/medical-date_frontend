@@ -167,7 +167,7 @@ export function MedicalCalendar({
     ...propFilters,
   }))
 
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(startOfDay(new Date()))
   const [selectedAppointment, setSelectedAppointment] =
     useState<CalendarEvent | null>(null)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
@@ -222,8 +222,8 @@ export function MedicalCalendar({
       })
     } else {
       // agenda - mostrar próximo mes
-      startDate = format(currentDate, 'yyyy-MM-dd')
-      endDate = format(addDays(currentDate, 30), 'yyyy-MM-dd')
+      startDate = format(startOfDay(currentDate), 'yyyy-MM-dd')
+      endDate = format(addDays(startOfDay(currentDate), 30), 'yyyy-MM-dd')
     }
 
     const baseParams = {

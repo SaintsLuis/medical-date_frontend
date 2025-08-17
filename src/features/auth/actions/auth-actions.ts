@@ -202,8 +202,8 @@ export async function logoutAction(): Promise<void> {
     await clearAuthCookies()
   }
 
-  // Redirect fuera del try/catch
-  redirect('/login', RedirectType.replace)
+  // 🆕 Redirect con replace para forzar recarga
+  redirect('/login?clearCache=true', RedirectType.replace)
 }
 
 // Server Action para obtener perfil (con auto-refresh)

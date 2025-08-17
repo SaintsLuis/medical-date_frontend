@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/features/auth/store/auth'
 import type {
   CreateAppointmentData,
   UpdateAppointmentData,
@@ -22,19 +23,24 @@ import {
 // ==============================================
 
 export function useAppointments(params: QueryAppointmentsParams = {}) {
+  const { user } = useAuthStore()
+
   return useQuery({
-    queryKey: ['appointments', params],
+    queryKey: ['appointments', user?.id, params],
     queryFn: () => getAppointments(params),
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
+    enabled: !!user, // Solo ejecutar si hay usuario autenticado
   })
 }
 
 export function useAppointment(id: string, enabled = true) {
+  const { user } = useAuthStore()
+
   return useQuery({
-    queryKey: ['appointments', id],
+    queryKey: ['appointments', user?.id, id],
     queryFn: () => getAppointmentById(id),
-    enabled: enabled && !!id,
+    enabled: enabled && !!id && !!user,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   })
@@ -44,18 +50,22 @@ export function useDoctorAvailability(
   params: QueryDoctorAvailabilityParams,
   enabled = true
 ) {
+  const { user } = useAuthStore()
+
   return useQuery({
-    queryKey: ['doctor-availability', params],
+    queryKey: ['doctor-availability', user?.id, params],
     queryFn: () => getDoctorAvailabilityAction(params),
-    enabled: enabled && !!params.doctorId && !!params.date,
+    enabled: enabled && !!params.doctorId && !!params.date && !!user,
     staleTime: 2 * 60 * 1000, // 2 minutos para disponibilidad
     gcTime: 5 * 60 * 1000,
   })
 }
 
 export function useAppointmentStats() {
+  const { user } = useAuthStore()
+
   return useQuery({
-    queryKey: ['appointment-stats'],
+    queryKey: ['appointment-stats', user?.id],
     queryFn: () => getAppointmentStatsAction(),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -68,14 +78,17 @@ export function useAppointmentStats() {
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: (data: CreateAppointmentData) => createAppointmentAction(data),
     onSuccess: () => {
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['appointment-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      // Invalidar queries relacionadas CON user ID
+      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] })
+      queryClient.invalidateQueries({
+        queryKey: ['appointment-stats', user?.id],
+      })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats', user?.id] })
     },
     onError: (error) => {
       console.error('Error creating appointment:', error)
@@ -85,16 +98,21 @@ export function useCreateAppointment() {
 
 export function useUpdateAppointment() {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateAppointmentData }) =>
       updateAppointmentAction(id, data),
     onSuccess: (_, { id }) => {
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['appointments', id] })
-      queryClient.invalidateQueries({ queryKey: ['appointment-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      // Invalidar queries relacionadas CON user ID
+      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] })
+      queryClient.invalidateQueries({
+        queryKey: ['appointments', user?.id, id],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['appointment-stats', user?.id],
+      })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats', user?.id] })
     },
     onError: (error) => {
       console.error('Error updating appointment:', error)
@@ -104,16 +122,21 @@ export function useUpdateAppointment() {
 
 export function useCancelAppointment() {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
 
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       cancelAppointmentAction(id, reason),
     onSuccess: (_, { id }) => {
-      // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['appointments', id] })
-      queryClient.invalidateQueries({ queryKey: ['appointment-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      // Invalidar queries relacionadas CON user ID
+      queryClient.invalidateQueries({ queryKey: ['appointments', user?.id] })
+      queryClient.invalidateQueries({
+        queryKey: ['appointments', user?.id, id],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['appointment-stats', user?.id],
+      })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats', user?.id] })
     },
     onError: (error) => {
       console.error('Error canceling appointment:', error)

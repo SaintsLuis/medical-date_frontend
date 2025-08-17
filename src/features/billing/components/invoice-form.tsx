@@ -225,7 +225,7 @@ export function InvoiceForm({
                     {appointment.patient?.lastName}
                   </div>
                   <div className='text-sm text-muted-foreground'>
-                    Dr. {appointment.doctor?.firstName}{' '}
+                    {appointment.doctor?.firstName}{' '}
                     {appointment.doctor?.lastName} -{' '}
                     {new Date(appointment.date).toLocaleDateString('es-ES')}
                     {appointment.price &&
@@ -267,7 +267,7 @@ export function InvoiceForm({
               <div>
                 <Label className='text-sm text-muted-foreground'>Doctor</Label>
                 <div className='font-medium'>
-                  Dr. {selectedAppointment.doctor?.firstName}{' '}
+                  {selectedAppointment.doctor?.firstName}{' '}
                   {selectedAppointment.doctor?.lastName}
                 </div>
                 <div className='text-sm text-muted-foreground'>

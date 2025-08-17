@@ -184,7 +184,7 @@ export function MedicalRecordDetails({
                           record.patient?.lastName ||
                           record.patientProfile?.user.lastName
                         }`
-                      : `Dr. ${record.doctor?.firstName} ${record.doctor?.lastName}`}
+                      : ` ${record.doctor?.firstName} ${record.doctor?.lastName}`}
                   </h3>
                   <p className='text-muted-foreground'>
                     {isDoctor
@@ -294,7 +294,7 @@ export function MedicalRecordDetails({
                                     record.patient?.lastName ||
                                     record.patientProfile?.user.lastName
                                   }`
-                                : `Dr. ${record.doctor?.firstName} ${record.doctor?.lastName}`}
+                                : ` ${record.doctor?.firstName} ${record.doctor?.lastName}`}
                             </p>
                           </div>
                         </div>

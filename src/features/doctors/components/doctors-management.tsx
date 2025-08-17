@@ -596,7 +596,7 @@ export function DoctorsManagement() {
                       </Avatar>
                       <div className='flex-1'>
                         <h3 className='font-medium text-lg leading-tight'>
-                          Dr. {doctor.user.firstName} {doctor.user.lastName}
+                          {doctor.user.firstName} {doctor.user.lastName}
                         </h3>
                         <p className='text-sm text-muted-foreground mt-1'>
                           {doctor.user.email}
