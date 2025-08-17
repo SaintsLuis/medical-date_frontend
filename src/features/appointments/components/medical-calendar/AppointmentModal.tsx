@@ -54,7 +54,6 @@ interface AppointmentFormData {
   type: AppointmentType
   status: AppointmentStatus
   notes: string
-  price?: number
   isRecurring: boolean
   recurringPattern?: RecurringAppointmentPattern
   reminderMinutes: number[]
@@ -75,7 +74,6 @@ const DEFAULT_FORM_DATA: AppointmentFormData = {
   type: 'IN_PERSON', // Por defecto presencial (seguro para todos los roles)
   status: 'SCHEDULED',
   notes: '',
-  price: 0,
   isRecurring: false,
   recurringPattern: undefined,
   reminderMinutes: [15],
@@ -213,7 +211,6 @@ export function AppointmentModal({
         type: appointment.type || 'IN_PERSON',
         status: appointment.status || 'SCHEDULED',
         notes: appointment.notes || '',
-        price: appointment.price || 0,
         isRecurring: appointment.isRecurring || false,
         recurringPattern: appointment.recurringPattern
           ? {
@@ -316,7 +313,6 @@ export function AppointmentModal({
         type: appointment.type || 'IN_PERSON',
         status: appointment.status || 'SCHEDULED',
         notes: appointment.notes || '',
-        price: appointment.price || 0,
         isRecurring: appointment.isRecurring || false,
         recurringPattern: appointment.recurringPattern
           ? {
@@ -517,10 +513,6 @@ export function AppointmentModal({
     // En modo edición, solo validar campos esenciales para el doctor
     if (isEditing) {
       // Solo validar notas si están presentes (opcional)
-      if (formData.price && formData.price < 0) {
-        newErrors.price = 'El precio no puede ser negativo'
-      }
-
       setErrors(newErrors)
       return Object.keys(newErrors).length === 0
     }
@@ -569,10 +561,6 @@ export function AppointmentModal({
         : 'No tiene permisos para crear citas virtuales'
     }
 
-    if (formData.price && formData.price < 0) {
-      newErrors.price = 'El precio no puede ser negativo'
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -618,7 +606,6 @@ export function AppointmentModal({
           id: appointment?.id,
           status: formData.status,
           notes: formData.notes,
-          price: formData.price,
         }
         console.log(
           '📝 AppointmentModal: Update data prepared:',
@@ -699,7 +686,6 @@ export function AppointmentModal({
           type: formData.type,
           status: formData.status,
           notes: formData.notes,
-          price: formData.price,
           isRecurring: formData.isRecurring,
           recurringPattern: formData.recurringPattern?.type.toUpperCase() as
             | 'DAILY'
@@ -928,23 +914,6 @@ export function AppointmentModal({
               onChange={(e) => handleInputChange('notes', e.target.value)}
               placeholder='Agregar notas sobre la consulta...'
               rows={4}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Precio si es necesario */}
-          <div className='space-y-2'>
-            <Label htmlFor='price'>Costo de la consulta</Label>
-            <Input
-              id='price'
-              type='number'
-              value={formData.price || ''}
-              onChange={(e) =>
-                handleInputChange('price', parseFloat(e.target.value) || 0)
-              }
-              placeholder='0.00'
-              min='0'
-              step='0.01'
               disabled={isSubmitting}
             />
           </div>
@@ -1208,26 +1177,6 @@ export function AppointmentModal({
             rows={3}
             disabled={isSubmitting}
           />
-        </div>
-
-        {/* Price */}
-        <div className='space-y-2'>
-          <Label htmlFor='price'>Precio (opcional)</Label>
-          <Input
-            id='price'
-            type='number'
-            value={formData.price || ''}
-            onChange={(e) =>
-              handleInputChange('price', parseFloat(e.target.value) || 0)
-            }
-            placeholder='0.00'
-            min='0'
-            step='0.01'
-            disabled={isSubmitting}
-          />
-          {errors.price && (
-            <p className='text-sm text-red-600'>{errors.price}</p>
-          )}
         </div>
       </div>
     )
