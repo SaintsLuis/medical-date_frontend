@@ -37,43 +37,43 @@ const DIRECT_ITEMS = [
   },
   {
     name: 'Citas',
-    href: '/appointments',
+    href: '/citas',
     icon: 'Calendar',
     roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
   {
     name: 'Clínicas',
-    href: '/clinics',
+    href: '/clinicas',
     icon: 'Hospital',
     roles: [UserRole.ADMIN], // Solo Admin
   },
   {
     name: 'Facturación',
-    href: '/billing',
+    href: '/facturacion',
     icon: 'CreditCard',
     roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
   {
     name: 'Expedientes',
-    href: '/medical-records',
+    href: '/historias-clinicas',
     icon: 'FileText',
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
   {
     name: 'Recetas',
-    href: '/prescriptions',
+    href: '/recetas',
     icon: 'Pill',
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
   {
     name: 'Especialidades',
-    href: '/specialties',
+    href: '/especialidades',
     icon: 'HeartPulse',
     roles: [UserRole.ADMIN], // Solo Admin
   },
   // {
   //   name: 'Configuración',
-  //   href: '/settings',
+  //   href: '/configuraciones',
   //   icon: 'Settings',
   //   roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   // },
@@ -88,22 +88,22 @@ const GROUPED_ITEMS = [
     items: [
       {
         name: 'Gestión de Usuarios',
-        href: '/users',
+        href: '/usuarios',
         roles: [UserRole.ADMIN],
       },
       {
         name: 'Pacientes',
-        href: '/patients',
+        href: '/pacientes',
         roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
       },
       {
         name: 'Doctores',
-        href: '/doctors',
+        href: '/doctores',
         roles: [UserRole.ADMIN], // Solo Admin
       },
       {
         name: 'Secretarias',
-        href: '/secretaries',
+        href: '/secretarias',
         roles: [UserRole.ADMIN], // Solo Admin
       },
     ],
