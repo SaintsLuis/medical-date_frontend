@@ -87,6 +87,7 @@ Panel de administración web completo para la gestión médica, desarrollado con
 ### UI y Componentes
 
 - **Tailwind CSS 4** - Framework de estilos utility-first
+- **Shadcn UI** - Componentes reutilizables y accesibles
 - **Radix UI** - Componentes de interfaz accesibles
 - **Lucide React** - Iconografía moderna
 - **Framer Motion** - Animaciones y transiciones
@@ -371,31 +372,6 @@ npm i -g vercel
 vercel --prod
 ```
 
-### 4. Despliegue en Otros Servicios
-
-**Netlify:**
-
-```bash
-# Configurar build command
-npm run build
-
-# Configurar publish directory
-.next
-```
-
-**Docker:**
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3001
-CMD ["npm", "start"]
-```
-
 ## 🔒 Seguridad
 
 ### Autenticación y Autorización
@@ -514,7 +490,7 @@ npx tailwindcss --help
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+Este proyecto está bajo Licencia. Ver el archivo `LICENSE` para más detalles.
 
 ## 👥 Equipo
 
@@ -525,8 +501,6 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 Para soporte técnico o preguntas:
 
 - 📧 Email: santosvluism@gmail.com
-- 🐛 Issues: [GitHub Issues](link-to-issues)
-- 📖 Docs: [Documentation](link-to-docs)
 
 ---
 
