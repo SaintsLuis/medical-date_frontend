@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 
 import {
@@ -54,14 +55,14 @@ const DIRECT_ITEMS = [
     roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.SECRETARY], // Admin, Doctor y Secretary
   },
   {
-    name: 'Expedientes',
-    href: '/historias-clinicas',
+    name: 'Registros Médicos',
+    href: '/registros-medicos',
     icon: 'FileText',
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
   {
     name: 'Recetas',
-    href: '/recetas',
+    href: '/prescriptions',
     icon: 'Pill',
     roles: [UserRole.ADMIN, UserRole.DOCTOR], // Admin y Doctor
   },
@@ -125,12 +126,27 @@ const filterItemsByRole = <T extends { roles: UserRole[] }>(
   return items.filter((item) => hasRole(userRoles, item.roles))
 }
 
+const isActiveRoute = (pathname: string, href: string): boolean => {
+  // Página de inicio exacta
+  if (href === '/' && pathname === '/') {
+    return true
+  }
+
+  // Para otras rutas, verificar si la ruta actual comienza con el href
+  if (href !== '/' && pathname.startsWith(href)) {
+    return true
+  }
+
+  return false
+}
+
 // ==============================================
 // Componente Principal
 // ==============================================
 
 export function SidebarItems() {
   const { user } = useAuthStore()
+  const pathname = usePathname()
   const userRoles = user?.roles || []
 
   // Filtrar elementos directos por rol
@@ -154,9 +170,11 @@ export function SidebarItems() {
         <SidebarMenu>
           {filteredDirectItems.map((item) => {
             const Icon = ICON_MAP[item.icon as keyof typeof ICON_MAP]
+            const isActive = isActiveRoute(pathname, item.href)
+
             return (
               <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={isActive}>
                   <Link href={item.href}>
                     <Icon />
                     <span>{item.name}</span>
@@ -171,13 +189,19 @@ export function SidebarItems() {
       {/* Elementos agrupados */}
       {filteredGroupedItems.map((group) => {
         const GroupIcon = ICON_MAP[group.icon as keyof typeof ICON_MAP]
+
+        // Verificar si algún item del grupo está activo para expandir automáticamente
+        const hasActiveItem = group.items.some((item) =>
+          isActiveRoute(pathname, item.href)
+        )
+
         return (
           <SidebarGroup key={group.title}>
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             <SidebarMenu>
               <Collapsible
                 asChild
-                defaultOpen={false}
+                defaultOpen={hasActiveItem}
                 className='group/collapsible'
               >
                 <SidebarMenuItem>
@@ -190,15 +214,19 @@ export function SidebarItems() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {group.items.map((item) => (
-                        <SidebarMenuSubItem key={item.name}>
-                          <SidebarMenuSubButton asChild>
-                            <Link href={item.href}>
-                              <span>{item.name}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
+                      {group.items.map((item) => {
+                        const isActive = isActiveRoute(pathname, item.href)
+
+                        return (
+                          <SidebarMenuSubItem key={item.name}>
+                            <SidebarMenuSubButton asChild isActive={isActive}>
+                              <Link href={item.href}>
+                                <span>{item.name}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        )
+                      })}
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </SidebarMenuItem>

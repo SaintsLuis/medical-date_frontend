@@ -21,9 +21,19 @@ export function usePatients(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: patientKeys.list(filters || {}),
     queryFn: async () => {
-      const response = await apiClient.get<Patient[]>('/patients', {
-        params: filters,
-      })
+      // Construir manualmente la query string para los filtros
+      const queryString = filters
+        ? '?' +
+          Object.entries(filters)
+            .map(
+              ([key, value]) =>
+                encodeURIComponent(key) +
+                '=' +
+                encodeURIComponent(String(value))
+            )
+            .join('&')
+        : ''
+      const response = await apiClient.get<Patient[]>(`/patients${queryString}`)
       return response
     },
     staleTime: 5 * 60 * 1000, // 5 minutos

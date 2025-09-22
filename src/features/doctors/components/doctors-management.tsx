@@ -1,15 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  Edit,
-  Trash2,
-  Plus,
-  Search,
-  RefreshCw,
-  Power,
-  PowerOff,
-} from 'lucide-react'
+import { Edit, Plus, Search, RefreshCw, Power, PowerOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -35,7 +27,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   useDoctors,
   useDoctorStats,
-  useDeleteDoctor,
   useToggleDoctorStatus,
 } from '../hooks/use-doctors'
 import { DoctorForm } from './doctor-form'
@@ -95,7 +86,7 @@ const getSpecialtyColor = (specialtyName: string): string => {
 export function DoctorsManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('')
@@ -132,11 +123,10 @@ export function DoctorsManagement() {
     error: statsError,
   } = useDoctorStats()
 
-  const deleteMutation = useDeleteDoctor()
   const toggleStatusMutation = useToggleDoctorStatus()
 
   // ==============================================
-  // Handlers
+  // Handlers de formularios y acciones
   // ==============================================
 
   const handleSearch = (value: string) => {
@@ -172,17 +162,17 @@ export function DoctorsManagement() {
     setShowForm(true)
   }
 
-  const handleDelete = (doctor: Doctor) => {
+  const handleDeactivate = (doctor: Doctor) => {
     setSelectedDoctor(doctor)
-    setShowDeleteConfirm(true)
+    setShowDeactivateConfirm(true)
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeactivate = async () => {
     if (!selectedDoctor) return
 
     try {
-      await deleteMutation.mutateAsync(selectedDoctor.id)
-      setShowDeleteConfirm(false)
+      await toggleStatusMutation.mutateAsync(selectedDoctor.id)
+      setShowDeactivateConfirm(false)
       setSelectedDoctor(null)
     } catch {
       // El error se maneja en el hook
@@ -558,13 +548,27 @@ export function DoctorsManagement() {
                             <Edit className='h-3 w-3' />
                           </Button>
                           <Button
-                            variant='outline'
+                            variant={
+                              doctor.user.isActive ? 'outline' : 'default'
+                            }
                             size='sm'
-                            onClick={() => handleDelete(doctor)}
-                            className='h-7 w-7 p-0'
-                            title='Eliminar doctor'
+                            onClick={() => handleDeactivate(doctor)}
+                            className={`h-7 w-7 p-0 ${
+                              doctor.user.isActive
+                                ? 'text-red-600 hover:bg-red-50 border-red-200'
+                                : 'text-green-600 hover:bg-green-50 border-green-200'
+                            }`}
+                            title={
+                              doctor.user.isActive
+                                ? 'Desactivar doctor (Recomendado)'
+                                : 'Reactivar doctor'
+                            }
                           >
-                            <Trash2 className='h-3 w-3' />
+                            {doctor.user.isActive ? (
+                              <PowerOff className='h-3 w-3' />
+                            ) : (
+                              <Power className='h-3 w-3' />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
@@ -614,13 +618,25 @@ export function DoctorsManagement() {
                         <Edit className='h-3 w-3' />
                       </Button>
                       <Button
-                        variant='outline'
+                        variant={doctor.user.isActive ? 'outline' : 'default'}
                         size='sm'
-                        onClick={() => handleDelete(doctor)}
-                        className='h-8 w-8 p-0'
-                        title='Eliminar doctor'
+                        onClick={() => handleDeactivate(doctor)}
+                        className={`h-8 w-8 p-0 ${
+                          doctor.user.isActive
+                            ? 'text-red-600 hover:bg-red-50 border-red-200'
+                            : 'text-green-600 hover:bg-green-50 border-green-200'
+                        }`}
+                        title={
+                          doctor.user.isActive
+                            ? 'Desactivar doctor (Recomendado)'
+                            : 'Reactivar doctor'
+                        }
                       >
-                        <Trash2 className='h-3 w-3' />
+                        {doctor.user.isActive ? (
+                          <PowerOff className='h-3 w-3' />
+                        ) : (
+                          <Power className='h-3 w-3' />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -736,47 +752,80 @@ export function DoctorsManagement() {
     )
   }
 
-  if (showDeleteConfirm && selectedDoctor) {
+  if (showDeactivateConfirm && selectedDoctor) {
+    const isActive = selectedDoctor.user.isActive
+
     return (
       <div className='space-y-6'>
         <div className='flex items-center justify-between'>
           <h1 className='text-3xl font-bold tracking-tight'>
-            Confirmar Eliminación
+            {isActive ? 'Confirmar Desactivación' : 'Confirmar Reactivación'}
           </h1>
-          <Button variant='outline' onClick={() => setShowDeleteConfirm(false)}>
+          <Button
+            variant='outline'
+            onClick={() => setShowDeactivateConfirm(false)}
+          >
             Cancelar
           </Button>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>¿Estás seguro?</CardTitle>
+            <CardTitle>
+              {isActive ? '¿Desactivar doctor?' : '¿Reactivar doctor?'}
+            </CardTitle>
             <CardDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente el
-              doctor Dr. {selectedDoctor.user.firstName}{' '}
-              {selectedDoctor.user.lastName} del sistema.
+              {isActive
+                ? `Se desactivará la cuenta del Dr. ${selectedDoctor.user.firstName} ${selectedDoctor.user.lastName}`
+                : `Se reactivará la cuenta del Dr. ${selectedDoctor.user.firstName} ${selectedDoctor.user.lastName}`}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <Alert variant='destructive'>
-              <AlertDescription>
-                <strong>Advertencia:</strong> Esta acción eliminará
-                permanentemente la cuenta del doctor y todos sus datos
-                asociados.
-              </AlertDescription>
-            </Alert>
+            {isActive ? (
+              <Alert>
+                <AlertDescription>
+                  <div className='space-y-2'>
+                    <p>
+                      <strong>DESACTIVACIÓN SEGURA:</strong>
+                    </p>
+                    <ul className='text-sm space-y-1 ml-4'>
+                      <li>• Se preservará todo el historial médico</li>
+                      <li>• Las prescripciones anteriores se mantendrán</li>
+                      <li>• Las citas pasadas seguirán disponibles</li>
+                      <li>• Cumple con regulaciones sanitarias</li>
+                      <li>• No podrá recibir nuevas citas</li>
+                      <li>• No aparecerá en búsquedas activas</li>
+                    </ul>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert>
+                <AlertDescription>
+                  <strong>REACTIVACIÓN:</strong> El doctor volverá a estar
+                  disponible para recibir nuevas citas y aparecerá en las
+                  búsquedas.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className='flex space-x-2'>
               <Button
                 variant='outline'
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => setShowDeactivateConfirm(false)}
               >
                 Cancelar
               </Button>
               <Button
-                variant='destructive'
-                onClick={handleConfirmDelete}
-                disabled={deleteMutation.isPending}
+                variant={isActive ? 'destructive' : 'default'}
+                onClick={handleConfirmDeactivate}
+                disabled={toggleStatusMutation.isPending}
               >
-                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+                {toggleStatusMutation.isPending
+                  ? isActive
+                    ? 'Desactivando...'
+                    : 'Reactivando...'
+                  : isActive
+                  ? 'Sí, Desactivar'
+                  : 'Sí, Reactivar'}
               </Button>
             </div>
           </CardContent>

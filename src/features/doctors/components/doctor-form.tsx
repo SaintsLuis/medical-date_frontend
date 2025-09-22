@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -178,6 +179,7 @@ export function DoctorForm({
   description = 'Completa la información para crear un nuevo doctor',
 }: DoctorFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const updateDoctorMutation = useUpdateDoctor()
   const { data: specialties } = useAllActiveSpecialties()
   const { data: clinics } = useAllActiveClinics()
@@ -703,11 +705,31 @@ export function DoctorForm({
               {!doctor && (
                 <div className='space-y-2'>
                   <Label>Contraseña</Label>
-                  <Input
-                    type='password'
-                    placeholder='Contraseña temporal'
-                    {...register('password')}
-                  />
+                  <div className='relative'>
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder='Contraseña '
+                      {...register('password')}
+                    />
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent'
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={
+                        showPassword
+                          ? 'Ocultar contraseña'
+                          : 'Mostrar contraseña'
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className='h-4 w-4 text-gray-500' />
+                      ) : (
+                        <Eye className='h-4 w-4 text-gray-500' />
+                      )}
+                    </Button>
+                  </div>
                   {errors.password && (
                     <p className='text-sm text-red-600'>
                       {String(errors.password?.message)}

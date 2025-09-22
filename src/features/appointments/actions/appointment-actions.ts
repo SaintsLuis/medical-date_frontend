@@ -36,8 +36,6 @@ const mapBackendAppointment = (
     status: backendAppointment.status,
     notes: backendAppointment.notes,
     videoLink: backendAppointment.videoLink,
-    meetingId: backendAppointment.meetingId,
-    meetingPassword: backendAppointment.meetingPassword,
     price: backendAppointment.price,
     reminderSent: backendAppointment.reminderSent,
     confirmationSent: backendAppointment.confirmationSent,
@@ -282,15 +280,15 @@ export async function cancelAppointmentAction(
   reason?: string
 ): Promise<ServerApiResponse<Appointment>> {
   try {
-    const updateData: UpdateAppointmentData = {
-      status: 'CANCELLED',
-      cancelledReason: reason,
+    // Construir URL con query parameter para la razón
+    let url = `/appointments/${id}`
+    if (reason) {
+      const params = new URLSearchParams({ reason })
+      url += `?${params.toString()}`
     }
 
-    const response = await serverApi.patch<BackendAppointment>(
-      `/appointments/${id}`,
-      updateData
-    )
+    // Usar DELETE para activar el método cancelAppointment que envía emails
+    const response = await serverApi.delete<BackendAppointment>(url)
 
     if (response.success) {
       revalidatePath('/(dashboard)/appointments')

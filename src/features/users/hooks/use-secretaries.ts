@@ -16,11 +16,11 @@ import {
   searchSecretariesAction,
   getSecretariesByDoctorAction,
   getAvailableSecretariesAction,
-} from '../actions/secretary-actions'
+} from '@/features/secretaries/actions/secretary-actions'
 import type {
   UpdateSecretaryData,
   QuerySecretariesParams,
-} from '../types/secretary-types'
+} from '../../secretaries/types'
 
 // ==============================================
 // Query Keys

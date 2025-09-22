@@ -55,6 +55,7 @@ import {
   usePatients,
   PatientResponseDto,
 } from '@/features/medical-records/hooks/use-patients'
+import { PatientSelector } from '@/features/medical-records/components/patient-selector'
 import { usePatientMedicalRecords } from '@/features/medical-records/hooks/use-medical-records'
 import { useAuthStore } from '@/features/auth/store/auth'
 import { UserRole } from '@/types/auth'
@@ -360,6 +361,7 @@ export function PrescriptionForm({
     isOpen,
     medicalRecordId,
     user?.id,
+    propSelectedPatientId,
     selectedPatient?.id,
     form,
   ])
@@ -369,7 +371,7 @@ export function PrescriptionForm({
     if (propSelectedPatientId && propSelectedPatientId !== selectedPatientId) {
       setSelectedPatientId(propSelectedPatientId)
     }
-  }, [propSelectedPatientId, selectedPatientId])
+  }, [propSelectedPatientId, selectedPatientId, form])
 
   // Enhanced form submission with better error handling
   const onSubmit = useCallback(
@@ -472,7 +474,6 @@ export function PrescriptionForm({
       createMutation,
       onClose,
       onSuccess,
-      selectedPatient?.id,
     ]
   )
 
@@ -539,6 +540,7 @@ export function PrescriptionForm({
     watchedValues.validUntil,
     watchedValues.medications,
     isEditMode,
+    form,
   ])
 
   // Add medication
@@ -713,32 +715,15 @@ export function PrescriptionForm({
                             name='patientId'
                             control={form.control}
                             render={({ field }) => (
-                              <Select
+                              <PatientSelector
                                 value={field.value || ''}
                                 onValueChange={(value) => {
                                   field.onChange(value)
                                   setSelectedPatientId(value)
                                   form.clearErrors('patientId')
                                 }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder='Selecciona un paciente' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {patientsData?.data?.map(
-                                    (patient: PatientResponseDto) => (
-                                      <SelectItem
-                                        key={patient.id}
-                                        value={patient.id}
-                                      >
-                                        {patient.user.firstName}{' '}
-                                        {patient.user.lastName} -{' '}
-                                        {patient.user.email}
-                                      </SelectItem>
-                                    )
-                                  )}
-                                </SelectContent>
-                              </Select>
+                                placeholder='Selecciona un paciente'
+                              />
                             )}
                           />
                         </FormField>

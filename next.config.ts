@@ -5,11 +5,12 @@ const nextConfig: NextConfig = {
     return [
       // Mapeo de rutas en español
       {
-        source: '/historias-clinicas',
+        // source: '/historias-clinicas',
+        source: '/registros-medicos',
         destination: '/medical-records',
       },
       {
-        source: '/historias-clinicas/:path*',
+        source: '/registros-medicos/:path*',
         destination: '/medical-records/:path*',
       },
       {

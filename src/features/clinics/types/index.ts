@@ -9,11 +9,24 @@ import { z } from 'zod'
 // Zod Validation Schemas
 // ==============================================
 
-export const workingDaySchema = z.object({
-  start: z.string().min(1, 'La hora de inicio es obligatoria'),
-  end: z.string().min(1, 'La hora de fin es obligatoria'),
-  isOpen: z.boolean(),
-})
+export const workingDaySchema = z
+  .object({
+    start: z.string(),
+    end: z.string(),
+    isOpen: z.boolean(),
+  })
+  .refine(
+    (data) => {
+      if (data.isOpen) {
+        return data.start.length > 0 && data.end.length > 0
+      }
+      return true
+    },
+    {
+      message:
+        'Las horas de inicio y fin son obligatorias cuando el día está abierto',
+    }
+  )
 
 export const weeklyScheduleSchema = z.object({
   monday: workingDaySchema,
@@ -48,16 +61,17 @@ export const createClinicSchema = z.object({
     .string()
     .email('Formato de email inválido')
     .max(100, 'El email no puede exceder 100 caracteres'),
-  coordinates: coordinatesSchema,
+  coordinates: coordinatesSchema.optional(),
   description: z
     .string()
     .max(500, 'La descripción no puede exceder 500 caracteres')
     .optional(),
   website: z
     .string()
-    .min(1, 'El sitio web es obligatorio')
     .url('Formato de URL inválido')
-    .max(200, 'La URL no puede exceder 200 caracteres'),
+    .max(200, 'La URL no puede exceder 200 caracteres')
+    .optional()
+    .or(z.literal('')),
   workingHours: weeklyScheduleSchema,
   services: z.array(z.string()).optional(),
   amenities: z.array(z.string()).optional(),
@@ -318,11 +332,11 @@ export const CLINIC_FORM_DEFAULTS: ClinicFormData = {
   phone: '',
   email: '',
   coordinates: {
-    lat: 0,
-    lng: 0,
+    lat: 18.486058, // Santo Domingo, República Dominicana
+    lng: -69.931212,
   },
   description: '',
-  website: 'https://www.clinica.com',
+  website: '',
   workingHours: {
     monday: { start: '08:00', end: '17:00', isOpen: true },
     tuesday: { start: '08:00', end: '17:00', isOpen: true },
@@ -332,7 +346,7 @@ export const CLINIC_FORM_DEFAULTS: ClinicFormData = {
     saturday: { start: '09:00', end: '13:00', isOpen: false },
     sunday: { start: '09:00', end: '13:00', isOpen: false },
   },
-  services: ['Medicina General'],
+  services: [],
   amenities: [],
   isActive: true,
 }

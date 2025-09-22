@@ -3,6 +3,9 @@ import { SettingsDashboard } from '@/features/settings/components/settings-dashb
 import { getServerToken } from '@/features/auth/actions/auth-actions'
 import { config } from '@/config/app'
 
+// Configuración para hacer la página dinámica (evita error de cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function SettingsPage() {
   const token = await getServerToken()
 

@@ -55,8 +55,8 @@ export type {
   SecretaryStats,
   SecretaryFormData,
   SecretaryFilters,
-  SecretaryAnalytics,
-  WorkScheduleType,
+  // SecretaryAnalytics,
+  // WorkScheduleType,
 } from './types'
 
 export {
@@ -64,5 +64,4 @@ export {
   SECRETARY_VALIDATION,
   secretaryFormSchema,
   SECRETARY_FILTER_DEFAULTS,
-  WORK_SCHEDULE_OPTIONS,
 } from './types'

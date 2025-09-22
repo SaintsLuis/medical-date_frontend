@@ -517,23 +517,36 @@ export const formatAppointmentDate = (dateString: string): string => {
 }
 
 export const formatAppointmentTime = (dateString: string): string => {
+  // 🔧 CORREGIDO: Usar UTC directo para consistencia con mobile
   const date = new Date(dateString)
-  return date.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const hours = date.getUTCHours()
+  const minutes = date.getUTCMinutes()
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12
+
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
 }
 
 export const formatAppointmentDateTime = (dateString: string): string => {
+  // 🔧 CORREGIDO: Usar UTC directo para consistencia con mobile
   const date = new Date(dateString)
-  return date.toLocaleString('es-ES', {
+  const hours = date.getUTCHours()
+  const minutes = date.getUTCMinutes()
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12
+  const timeFormatted = `${displayHours}:${minutes
+    .toString()
+    .padStart(2, '0')} ${period}`
+
+  // Para la fecha, usar formato local sin problemas
+  const dateFormatted = date.toLocaleDateString('es-ES', {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
+
+  return `${dateFormatted} ${timeFormatted}`
 }
 
 export const isAppointmentToday = (dateString: string): boolean => {

@@ -20,6 +20,13 @@ export enum Priority {
   URGENT = 'URGENT',
 }
 
+export enum MedicalRecordStatus {
+  ACTIVE = 'ACTIVE',
+  ARCHIVED = 'ARCHIVED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  AMENDED = 'AMENDED',
+}
+
 // ==============================================
 // Interfaces principales
 // ==============================================
@@ -45,6 +52,9 @@ export interface PatientBasicInfo {
   firstName: string
   lastName: string
   email: string
+  birthDate?: string
+  gender?: string
+  bloodType?: string
 }
 
 export interface DoctorBasicInfo {
@@ -87,6 +97,7 @@ export interface MedicalRecord {
   date: string
   category?: MedicalRecordCategory
   priority?: Priority
+  status: MedicalRecordStatus
   symptoms: string[]
   diagnosis: string
   treatment?: string
@@ -94,6 +105,9 @@ export interface MedicalRecord {
   allergies: string[]
   followUpDate?: string
   appointmentId?: string
+  archivedAt?: string
+  archivedBy?: string
+  archiveReason?: string
   createdAt: string
   updatedAt: string
   // Relaciones
@@ -146,6 +160,10 @@ export interface UpdateMedicalRecordDto {
   allergies?: string[]
   followUpDate?: string
   vitalSigns?: CreateVitalSignsDto
+}
+
+export interface ArchiveMedicalRecordDto {
+  reason: string
 }
 
 // ==============================================
@@ -300,7 +318,7 @@ export const MEDICAL_RECORD_FORM_DEFAULTS: MedicalRecordFormData = {
 }
 
 export const MEDICAL_RECORD_FILTER_DEFAULTS: MedicalRecordFilters = {
-  patientProfileId: '',
+  patientProfileId: 'ALL_PATIENTS',
   doctorId: '',
   category: 'ALL',
   priority: 'ALL',
@@ -344,6 +362,26 @@ export const getPriorityColor = (priority: Priority): string => {
     [Priority.URGENT]: 'bg-red-100 text-red-800',
   }
   return priorityColors[priority] || 'bg-gray-100 text-gray-800'
+}
+
+export const getStatusText = (status: MedicalRecordStatus): string => {
+  const statusTexts: Record<MedicalRecordStatus, string> = {
+    [MedicalRecordStatus.ACTIVE]: 'Activo',
+    [MedicalRecordStatus.ARCHIVED]: 'Archivado',
+    [MedicalRecordStatus.UNDER_REVIEW]: 'En Revisión',
+    [MedicalRecordStatus.AMENDED]: 'Enmendado',
+  }
+  return statusTexts[status] || status
+}
+
+export const getStatusColor = (status: MedicalRecordStatus): string => {
+  const statusColors: Record<MedicalRecordStatus, string> = {
+    [MedicalRecordStatus.ACTIVE]: 'bg-green-100 text-green-800',
+    [MedicalRecordStatus.ARCHIVED]: 'bg-gray-100 text-gray-800',
+    [MedicalRecordStatus.UNDER_REVIEW]: 'bg-yellow-100 text-yellow-800',
+    [MedicalRecordStatus.AMENDED]: 'bg-blue-100 text-blue-800',
+  }
+  return statusColors[status] || 'bg-gray-100 text-gray-800'
 }
 
 export const getCategoryColor = (category: MedicalRecordCategory): string => {
@@ -462,6 +500,7 @@ export function mapMedicalRecordFromApi(record: unknown): MedicalRecord {
     date: String(rec.date),
     category: rec.category as MedicalRecordCategory,
     priority: rec.priority as Priority,
+    status: (rec.status as MedicalRecordStatus) || MedicalRecordStatus.ACTIVE,
     symptoms: Array.isArray(rec.symptoms) ? (rec.symptoms as string[]) : [],
     diagnosis: String(rec.diagnosis),
     treatment: rec.treatment ? String(rec.treatment) : undefined,
@@ -469,6 +508,9 @@ export function mapMedicalRecordFromApi(record: unknown): MedicalRecord {
     allergies: Array.isArray(rec.allergies) ? (rec.allergies as string[]) : [],
     followUpDate: rec.followUpDate ? String(rec.followUpDate) : undefined,
     appointmentId: rec.appointmentId ? String(rec.appointmentId) : undefined,
+    archivedAt: rec.archivedAt ? String(rec.archivedAt) : undefined,
+    archivedBy: rec.archivedBy ? String(rec.archivedBy) : undefined,
+    archiveReason: rec.archiveReason ? String(rec.archiveReason) : undefined,
     createdAt: String(rec.createdAt),
     updatedAt: String(rec.updatedAt),
     patientProfile: rec.patientProfile as PatientProfile,
@@ -500,4 +542,23 @@ export function mapVitalSignsFromApi(vitalSigns: unknown): VitalSigns {
     createdAt: String(vs.createdAt),
     updatedAt: String(vs.updatedAt),
   }
+}
+
+// ==============================================
+// Utility function for blood type formatting
+// ==============================================
+
+export const formatBloodType = (bloodType: string): string => {
+  const bloodTypeMap: Record<string, string> = {
+    A_POSITIVE: 'A+',
+    A_NEGATIVE: 'A-',
+    B_POSITIVE: 'B+',
+    B_NEGATIVE: 'B-',
+    AB_POSITIVE: 'AB+',
+    AB_NEGATIVE: 'AB-',
+    O_POSITIVE: 'O+',
+    O_NEGATIVE: 'O-',
+  }
+
+  return bloodTypeMap[bloodType] || bloodType
 }

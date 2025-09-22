@@ -11,6 +11,7 @@ import {
   createClinicAction,
   updateClinicAction,
   deleteClinicAction,
+  toggleClinicStatusAction,
   getClinics,
   getClinicById,
   getClinicStats,
@@ -79,11 +80,19 @@ export const useCreateClinic = () => {
     mutationFn: (data: CreateClinicFormData) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { isActive, ...clinicData } = data
-      return createClinicAction({
+
+      // Ensure coordinates are provided
+      const finalData = {
         ...clinicData,
+        coordinates: clinicData.coordinates || {
+          lat: 18.486058,
+          lng: -69.931212,
+        },
         services: clinicData.services || [],
         amenities: clinicData.amenities || [],
-      })
+      }
+
+      return createClinicAction(finalData)
     },
     onSuccess: () => {
       toast.success('Clínica creada exitosamente')
@@ -112,9 +121,19 @@ export const useUpdateClinic = () => {
     },
     onSuccess: (response, { id }) => {
       toast.success('Clínica actualizada exitosamente')
-      queryClient.invalidateQueries({ queryKey: clinicKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: clinicKeys.detail(id) })
-      queryClient.invalidateQueries({ queryKey: clinicKeys.stats() })
+
+      // Clear all caches and force refetch
+      queryClient.clear()
+
+      // Alternative: More targeted invalidation
+      queryClient.invalidateQueries({ queryKey: clinicKeys.all })
+      queryClient.refetchQueries({ queryKey: clinicKeys.detail(id) })
+      queryClient.refetchQueries({ queryKey: clinicKeys.lists() })
+
+      // Force a hard refresh of the specific clinic
+      setTimeout(() => {
+        queryClient.resetQueries({ queryKey: clinicKeys.detail(id) })
+      }, 100)
     },
     onError: (error) => {
       console.error('Error updating clinic:', error)
@@ -141,10 +160,56 @@ export const useDeleteClinic = () => {
     },
     onError: (error) => {
       console.error('Error deleting clinic:', error)
+
+      // Handle specific error messages from backend
+      let errorMessage = 'Error al eliminar la clínica. Inténtalo de nuevo.'
+
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase()
+        if (
+          message.includes('doctores asociados') ||
+          message.includes('doctors associated')
+        ) {
+          errorMessage =
+            'No se puede eliminar una clínica que tiene doctores asociados. Primero debe desasociar todos los doctores.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+
+      toast.error(errorMessage)
+    },
+  })
+}
+
+/**
+ * Hook para cambiar el estado activo/inactivo de una clínica
+ */
+export const useToggleClinicStatus = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => toggleClinicStatusAction(id),
+    onSuccess: (response, id) => {
+      const isNowActive = response.success && response.data?.isActive
+      toast.success(
+        isNowActive
+          ? 'Clínica activada exitosamente'
+          : 'Clínica desactivada exitosamente'
+      )
+
+      // Invalidate all clinic queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: clinicKeys.all })
+      queryClient.invalidateQueries({ queryKey: clinicKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: clinicKeys.stats() })
+      queryClient.invalidateQueries({ queryKey: clinicKeys.detail(id) })
+    },
+    onError: (error) => {
+      console.error('Error toggling clinic status:', error)
       toast.error(
         error instanceof Error
           ? error.message
-          : 'Error al eliminar la clínica. Inténtalo de nuevo.'
+          : 'Error al cambiar el estado de la clínica. Inténtalo de nuevo.'
       )
     },
   })
@@ -158,14 +223,17 @@ export const useClinicActions = () => {
   const createClinic = useCreateClinic()
   const updateClinic = useUpdateClinic()
   const deleteClinic = useDeleteClinic()
+  const toggleStatus = useToggleClinicStatus()
 
   return {
     createClinic,
     updateClinic,
     deleteClinic,
+    toggleStatus,
     isLoading:
       createClinic.isPending ||
       updateClinic.isPending ||
-      deleteClinic.isPending,
+      deleteClinic.isPending ||
+      toggleStatus.isPending,
   }
 }

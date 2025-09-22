@@ -33,7 +33,7 @@ import {
   MoreHorizontal,
   Eye,
   Edit,
-  Trash2,
+  Archive,
   Clock,
   CheckCircle,
   AlertTriangle,
@@ -74,7 +74,7 @@ interface MedicalRecordsTableProps {
   onPageChange: (page: number) => void
   onView: (record: MedicalRecord) => void
   onEdit: (record: MedicalRecord) => void
-  onDelete: (record: MedicalRecord) => void
+  onArchive: (record: MedicalRecord) => void
 }
 
 export function MedicalRecordsTable({
@@ -89,10 +89,11 @@ export function MedicalRecordsTable({
   onPageChange,
   onView,
   onEdit,
-  onDelete,
+  onArchive,
 }: MedicalRecordsTableProps) {
   const { user } = useAuthStore()
   const isDoctor = user?.roles.includes(UserRole.DOCTOR)
+  const isAdmin = user?.roles.includes(UserRole.ADMIN)
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName || !lastName) return 'NA'
@@ -442,14 +443,18 @@ export function MedicalRecordsTable({
                                     <Edit className='mr-2 h-4 w-4' />
                                     Editar
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => onDelete(record)}
-                                    className='text-red-600'
-                                  >
-                                    <Trash2 className='mr-2 h-4 w-4' />
-                                    Eliminar
-                                  </DropdownMenuItem>
+                                  {isAdmin && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => onArchive(record)}
+                                        className='text-amber-600'
+                                      >
+                                        <Archive className='mr-2 h-4 w-4' />
+                                        Archivar
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </>
                               )}
                             </DropdownMenuContent>
@@ -554,14 +559,18 @@ export function MedicalRecordsTable({
                                 <Edit className='mr-2 h-4 w-4' />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => onDelete(record)}
-                                className='text-red-600'
-                              >
-                                <Trash2 className='mr-2 h-4 w-4' />
-                                Eliminar
-                              </DropdownMenuItem>
+                              {isAdmin && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => onArchive(record)}
+                                    className='text-amber-600'
+                                  >
+                                    <Archive className='mr-2 h-4 w-4' />
+                                    Archivar
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </>
                           )}
                         </DropdownMenuContent>

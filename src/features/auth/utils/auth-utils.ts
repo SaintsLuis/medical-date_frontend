@@ -48,10 +48,7 @@ export const hasAnyRole = (
 }
 
 export const isAdmin = (userRoles: UserRole[]): boolean => {
-  return (
-    userRoles.includes(UserRole.ADMIN) ||
-    userRoles.includes(UserRole.SUPER_ADMIN)
-  )
+  return userRoles.includes(UserRole.ADMIN)
 }
 
 export const isDoctor = (userRoles: UserRole[]): boolean => {
@@ -90,17 +87,17 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
  * Define which roles can access each route
  */
 export const ROUTE_ROLES: Record<string, UserRole[]> = {
-  '/doctors': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/billing': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/billing/invoices': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/billing/payments': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/billing/reports': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/clinics': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/clinics/schedules': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/clinics/specialties': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/analytics': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/analytics/reports': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
-  '/analytics/metrics': [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+  '/doctors': [UserRole.ADMIN],
+  '/billing': [UserRole.ADMIN],
+  '/billing/invoices': [UserRole.ADMIN],
+  '/billing/payments': [UserRole.ADMIN],
+  '/billing/reports': [UserRole.ADMIN],
+  '/clinics': [UserRole.ADMIN],
+  '/clinics/schedules': [UserRole.ADMIN],
+  '/clinics/specialties': [UserRole.ADMIN],
+  '/analytics': [UserRole.ADMIN],
+  '/analytics/reports': [UserRole.ADMIN],
+  '/analytics/metrics': [UserRole.ADMIN],
 }
 
 /**

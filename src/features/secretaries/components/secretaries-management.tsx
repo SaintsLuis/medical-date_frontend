@@ -5,7 +5,6 @@ import {
   Search,
   RefreshCw,
   Edit,
-  Trash2,
   UserPlus,
   Power,
   PowerOff,
@@ -36,7 +35,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   useSecretaries,
   useSecretaryStats,
-  useDeleteSecretary,
   useToggleSecretaryStatus,
 } from '../hooks/use-secretaries'
 import { SecretaryForm } from './secretary-form'
@@ -63,7 +61,7 @@ import {
 export function SecretariesManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
   const [selectedSecretary, setSelectedSecretary] = useState<Secretary | null>(
     null
   )
@@ -97,7 +95,6 @@ export function SecretariesManagement() {
     error: statsError,
   } = useSecretaryStats()
 
-  const deleteMutation = useDeleteSecretary()
   const toggleStatusMutation = useToggleSecretaryStatus()
 
   // ===================================
@@ -124,17 +121,17 @@ export function SecretariesManagement() {
     setShowForm(true)
   }
 
-  const handleDelete = (secretary: Secretary) => {
+  const handleDeactivate = (secretary: Secretary) => {
     setSelectedSecretary(secretary)
-    setShowDeleteConfirm(true)
+    setShowDeactivateConfirm(true)
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeactivate = async () => {
     if (!selectedSecretary) return
 
     try {
-      await deleteMutation.mutateAsync(selectedSecretary.id)
-      setShowDeleteConfirm(false)
+      await toggleStatusMutation.mutateAsync(selectedSecretary.id)
+      setShowDeactivateConfirm(false)
       setSelectedSecretary(null)
     } catch {
       // El error se maneja en el hook
@@ -598,12 +595,25 @@ export function SecretariesManagement() {
                             <Edit className='h-3 w-3' />
                           </Button>
                           <Button
-                            variant='outline'
+                            variant={secretary.isActive ? 'outline' : 'default'}
                             size='sm'
-                            onClick={() => handleDelete(secretary)}
-                            className='h-7 w-7 p-0'
+                            onClick={() => handleDeactivate(secretary)}
+                            className={`h-7 w-7 p-0 ${
+                              secretary.isActive
+                                ? 'text-red-600 hover:bg-red-50 border-red-200'
+                                : 'text-green-600 hover:bg-green-50 border-green-200'
+                            }`}
+                            title={
+                              secretary.isActive
+                                ? 'Desactivar secretaria (Recomendado)'
+                                : 'Reactivar secretaria'
+                            }
                           >
-                            <Trash2 className='h-3 w-3' />
+                            {secretary.isActive ? (
+                              <PowerOff className='h-3 w-3' />
+                            ) : (
+                              <Power className='h-3 w-3' />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
@@ -638,12 +648,25 @@ export function SecretariesManagement() {
                         <Edit className='h-3 w-3' />
                       </Button>
                       <Button
-                        variant='outline'
+                        variant={secretary.isActive ? 'outline' : 'default'}
                         size='sm'
-                        onClick={() => handleDelete(secretary)}
-                        className='h-8 w-8 p-0'
+                        onClick={() => handleDeactivate(secretary)}
+                        className={`h-8 w-8 p-0 ${
+                          secretary.isActive
+                            ? 'text-red-600 hover:bg-red-50 border-red-200'
+                            : 'text-green-600 hover:bg-green-50 border-green-200'
+                        }`}
+                        title={
+                          secretary.isActive
+                            ? 'Desactivar secretaria (Recomendado)'
+                            : 'Reactivar secretaria'
+                        }
                       >
-                        <Trash2 className='h-3 w-3' />
+                        {secretary.isActive ? (
+                          <PowerOff className='h-3 w-3' />
+                        ) : (
+                          <Power className='h-3 w-3' />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -780,47 +803,63 @@ export function SecretariesManagement() {
     )
   }
 
-  if (showDeleteConfirm && selectedSecretary) {
+  if (showDeactivateConfirm && selectedSecretary) {
     return (
       <div className='space-y-6'>
         <div className='flex items-center justify-between'>
           <h1 className='text-3xl font-bold tracking-tight'>
-            Confirmar Eliminación
+            {selectedSecretary.isActive
+              ? 'Confirmar Desactivación'
+              : 'Confirmar Reactivación'}
           </h1>
-          <Button variant='outline' onClick={() => setShowDeleteConfirm(false)}>
+          <Button
+            variant='outline'
+            onClick={() => setShowDeactivateConfirm(false)}
+          >
             Cancelar
           </Button>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>¿Estás seguro?</CardTitle>
+            <CardTitle>
+              {selectedSecretary.isActive
+                ? '¿Desactivar secretaria?'
+                : '¿Reactivar secretaria?'}
+            </CardTitle>
             <CardDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la
-              secretaria {selectedSecretary.firstName}{' '}
-              {selectedSecretary.lastName} del sistema.
+              {selectedSecretary.isActive
+                ? `La secretaria ${selectedSecretary.firstName} ${selectedSecretary.lastName} será desactivada pero se preservarán todos sus datos operativos.`
+                : `La secretaria ${selectedSecretary.firstName} ${selectedSecretary.lastName} será reactivada y podrá volver a gestionar doctores y operaciones.`}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <Alert variant='destructive'>
+            <Alert variant={selectedSecretary.isActive ? 'default' : 'default'}>
               <AlertDescription>
-                <strong>Advertencia:</strong> Esta acción eliminará
-                permanentemente la secretaria y todas sus asignaciones de
-                doctores.
+                <strong>Información importante:</strong>{' '}
+                {selectedSecretary.isActive
+                  ? 'La desactivación preserva todo el historial operativo, asignaciones de doctores y datos administrativos. Esta es la acción recomendada para mantener la integridad de los datos operativos.'
+                  : 'La reactivación permitirá a la secretaria volver a acceder al sistema y gestionar todas sus funciones administrativas.'}
               </AlertDescription>
             </Alert>
             <div className='flex space-x-2'>
               <Button
                 variant='outline'
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => setShowDeactivateConfirm(false)}
               >
                 Cancelar
               </Button>
               <Button
-                variant='destructive'
-                onClick={handleConfirmDelete}
-                disabled={deleteMutation.isPending}
+                variant={selectedSecretary.isActive ? 'destructive' : 'default'}
+                onClick={handleConfirmDeactivate}
+                disabled={toggleStatusMutation.isPending}
               >
-                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+                {toggleStatusMutation.isPending
+                  ? selectedSecretary.isActive
+                    ? 'Desactivando...'
+                    : 'Reactivando...'
+                  : selectedSecretary.isActive
+                  ? 'Desactivar'
+                  : 'Reactivar'}
               </Button>
             </div>
           </CardContent>

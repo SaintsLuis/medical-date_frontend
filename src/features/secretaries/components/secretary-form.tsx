@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { X, Search } from 'lucide-react'
+import { X, Search, Eye, EyeOff } from 'lucide-react'
 
 import {
   useCreateSecretary,
@@ -57,6 +57,7 @@ export function SecretaryForm({
 }: SecretaryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [doctorSearch, setDoctorSearch] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const isEditing = !!secretary
   const createMutation = useCreateSecretary()
@@ -431,22 +432,38 @@ export function SecretaryForm({
           {/* Contraseña */}
           <div className='space-y-2'>
             <Label htmlFor='password'>
-              {isEditing
-                ? 'Nueva Contraseña (opcional)'
-                : 'Contraseña Temporal'}
+              {isEditing ? 'Nueva Contraseña (opcional)' : 'Contraseña'}
               {!isEditing && <span className='text-red-500'>*</span>}
             </Label>
-            <Input
-              id='password'
-              type='password'
-              {...register('password')}
-              placeholder={
-                isEditing
-                  ? 'Dejar vacío para mantener actual'
-                  : 'Contraseña temporal para la secretaria'
-              }
-              className={errors.password ? 'border-red-500' : ''}
-            />
+            <div className='relative'>
+              <Input
+                id='password'
+                type={showPassword ? 'text' : 'password'}
+                {...register('password')}
+                placeholder={
+                  isEditing
+                    ? 'Dejar vacío para mantener actual'
+                    : 'Contraseña para la secretaria'
+                }
+                className={`pr-10 ${errors.password ? 'border-red-500' : ''}`}
+              />
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                className='absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent'
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={
+                  showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                }
+              >
+                {showPassword ? (
+                  <EyeOff className='h-4 w-4 text-gray-500' />
+                ) : (
+                  <Eye className='h-4 w-4 text-gray-500' />
+                )}
+              </Button>
+            </div>
             {errors.password && (
               <p className='text-sm text-red-500'>{errors.password.message}</p>
             )}

@@ -7,6 +7,7 @@ import { serverApi, type ServerApiResponse } from '@/lib/api/server-client'
 import {
   CreateMedicalRecordDto,
   UpdateMedicalRecordDto,
+  ArchiveMedicalRecordDto,
   QueryMedicalRecordsParams,
   MedicalRecord,
   PaginatedMedicalRecordsResponse,
@@ -196,4 +197,42 @@ export async function deleteMedicalRecordAction(
   }
 
   return result
+}
+
+export async function archiveMedicalRecordAction(
+  id: string,
+  data: ArchiveMedicalRecordDto
+): Promise<ServerApiResponse<MedicalRecord>> {
+  const result = await serverApi.patch<MedicalRecord>(
+    `/medical-records/${id}/archive`,
+    data
+  )
+
+  if (result.success) {
+    // Revalidate relevant caches
+    revalidateTag('medical-records')
+    revalidateTag(`medical-record-${id}`)
+    revalidateTag('archived-medical-records')
+  }
+
+  return result
+}
+
+export async function getArchivedMedicalRecordsAction(
+  params: QueryMedicalRecordsParams = {}
+): Promise<ServerApiResponse<PaginatedMedicalRecordsResponse>> {
+  const queryParams = new URLSearchParams()
+
+  if (params.page) queryParams.append('page', params.page.toString())
+  if (params.limit) queryParams.append('limit', params.limit.toString())
+  if (params.doctorId) queryParams.append('doctorId', params.doctorId)
+  if (params.startDate) queryParams.append('startDate', params.startDate)
+  if (params.endDate) queryParams.append('endDate', params.endDate)
+  if (params.search) queryParams.append('search', params.search)
+
+  const url = `/medical-records/archived${
+    queryParams.toString() ? `?${queryParams.toString()}` : ''
+  }`
+
+  return serverApi.get<PaginatedMedicalRecordsResponse>(url)
 }

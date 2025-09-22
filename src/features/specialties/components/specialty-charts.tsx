@@ -830,7 +830,11 @@ export function SpecialtyCharts({ className }: SpecialtyChartsProps) {
                 <ChartTooltipContent
                   formatter={(value, name, props) => [
                     name === 'doctors' ? `${value} doctores` : `${value}/5`,
-                    props?.payload?.name || '',
+                    props?.payload &&
+                    typeof props.payload === 'object' &&
+                    'name' in props.payload
+                      ? String(props.payload.name)
+                      : '',
                   ]}
                 />
               }

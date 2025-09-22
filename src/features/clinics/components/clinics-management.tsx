@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -95,7 +95,11 @@ export function ClinicsManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Hook de acciones
-  const { deleteClinic, isLoading: managementLoading } = useClinicActions()
+  const {
+    deleteClinic,
+    toggleStatus,
+    isLoading: managementLoading,
+  } = useClinicActions()
 
   // Estados adicionales
   const [viewDetailsClinic, setViewDetailsClinic] = useState<Clinic | null>(
@@ -122,11 +126,26 @@ export function ClinicsManagement() {
 
   // Queries
   const {
-    data: clinicsResponse,
+    data: clinicsData,
     isLoading: clinicsLoading,
     error: clinicsError,
     refetch: refetchClinics,
   } = useClinics(queryParams)
+
+  // Auto-update viewDetailsClinic when clinics data changes
+  useEffect(() => {
+    if (viewDetailsClinic && clinicsData?.data?.data) {
+      const updatedClinic = clinicsData.data.data.find(
+        (clinic: Clinic) => clinic.id === viewDetailsClinic.id
+      )
+      if (
+        updatedClinic &&
+        JSON.stringify(updatedClinic) !== JSON.stringify(viewDetailsClinic)
+      ) {
+        setViewDetailsClinic(updatedClinic)
+      }
+    }
+  }, [clinicsData?.data?.data, viewDetailsClinic])
 
   const {
     data: statsData,
@@ -185,9 +204,8 @@ export function ClinicsManagement() {
     }
   }
 
-  const handleToggleStatusClick = async (clinic: Clinic) => {
-    // TODO: Implementar toggle de estado
-    console.log('Toggle status for clinic:', clinic.id)
+  const handleToggleStatusClick = (clinic: Clinic) => {
+    toggleStatus.mutate(clinic.id)
   }
 
   const handleViewDetails = (clinic: Clinic) => {
@@ -197,8 +215,25 @@ export function ClinicsManagement() {
 
   const handleFormSuccess = () => {
     setIsFormOpen(false)
+
+    // If we're editing a clinic that is currently being viewed in details,
+    // update the details view after a successful edit
+    if (
+      selectedClinic &&
+      viewDetailsClinic &&
+      selectedClinic.id === viewDetailsClinic.id
+    ) {
+      // Clear the details view to force a refresh
+      setViewDetailsClinic(null)
+      setIsDetailsDialogOpen(false)
+    }
+
     setSelectedClinic(null)
-    refetchClinics()
+
+    // Force refetch to ensure we get the latest data
+    setTimeout(() => {
+      refetchClinics()
+    }, 100)
   }
 
   // ==============================================
@@ -346,10 +381,7 @@ export function ClinicsManagement() {
       )
     }
 
-    if (
-      !clinicsResponse?.data?.data ||
-      clinicsResponse.data.data.length === 0
-    ) {
+    if (!clinicsData?.data?.data || clinicsData.data.data.length === 0) {
       return (
         <Card>
           <CardContent className='flex flex-col items-center justify-center py-16'>
@@ -374,7 +406,7 @@ export function ClinicsManagement() {
 
     return (
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-        {clinicsResponse.data.data.map((clinic: Clinic) => {
+        {clinicsData.data.data.map((clinic: Clinic) => {
           const isOpen = clinic.workingHours
             ? isClinicOpen(clinic.workingHours)
             : false
@@ -445,11 +477,27 @@ export function ClinicsManagement() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => handleDeleteClick(clinic)}
-                        className='text-red-600'
+                        className={
+                          (clinic.totalDoctors ?? 0) > 0
+                            ? 'text-amber-600 cursor-not-allowed'
+                            : 'text-red-600'
+                        }
                         disabled={managementLoading}
                       >
-                        <Trash2 className='mr-2 h-4 w-4' />
-                        Eliminar
+                        {(clinic.totalDoctors ?? 0) > 0 ? (
+                          <>
+                            <AlertCircle className='mr-2 h-4 w-4' />
+                            No se puede eliminar ({clinic.totalDoctors ??
+                              0}{' '}
+                            doctor
+                            {(clinic.totalDoctors ?? 0) > 1 ? 'es' : ''})
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className='mr-2 h-4 w-4' />
+                            Eliminar
+                          </>
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -823,41 +871,36 @@ export function ClinicsManagement() {
           <ClinicsGrid />
 
           {/* Paginación */}
-          {clinicsResponse?.data &&
-            clinicsResponse.data.meta.totalPages > 1 && (
-              <div className='flex items-center justify-between'>
-                <p className='text-sm text-muted-foreground'>
-                  Mostrando {(currentPage - 1) * pageSize + 1} a{' '}
-                  {Math.min(
-                    currentPage * pageSize,
-                    clinicsResponse.data.meta.total
-                  )}{' '}
-                  de {clinicsResponse.data.meta.total} clínicas
-                </p>
-                <div className='flex items-center space-x-2'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={!clinicsResponse.data.meta.hasPreviousPage}
-                  >
-                    Anterior
-                  </Button>
-                  <span className='text-sm'>
-                    Página {currentPage} de{' '}
-                    {clinicsResponse.data.meta.totalPages}
-                  </span>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={!clinicsResponse.data.meta.hasNextPage}
-                  >
-                    Siguiente
-                  </Button>
-                </div>
+          {clinicsData?.data && clinicsData.data.meta.totalPages > 1 && (
+            <div className='flex items-center justify-between'>
+              <p className='text-sm text-muted-foreground'>
+                Mostrando {(currentPage - 1) * pageSize + 1} a{' '}
+                {Math.min(currentPage * pageSize, clinicsData.data.meta.total)}{' '}
+                de {clinicsData.data.meta.total} clínicas
+              </p>
+              <div className='flex items-center space-x-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={!clinicsData.data.meta.hasPreviousPage}
+                >
+                  Anterior
+                </Button>
+                <span className='text-sm'>
+                  Página {currentPage} de {clinicsData.data.meta.totalPages}
+                </span>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={!clinicsData.data.meta.hasNextPage}
+                >
+                  Siguiente
+                </Button>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -877,31 +920,76 @@ export function ClinicsManagement() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar clínica?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la
-              clínica &quot;{selectedClinic?.name}&quot; y todos sus datos
-              asociados.
+            <AlertDialogTitle className='flex items-center gap-2'>
+              {selectedClinic && (selectedClinic.totalDoctors || 0) > 0 ? (
+                <>
+                  <AlertCircle className='h-5 w-5 text-amber-500' />
+                  No se puede eliminar la clínica
+                </>
+              ) : (
+                <>
+                  <Trash2 className='h-5 w-5 text-red-500' />
+                  ¿Eliminar clínica?
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {selectedClinic && (selectedClinic.totalDoctors || 0) > 0 ? (
+                <div className='space-y-3'>
+                  <div>
+                    No es posible eliminar la clínica &quot;
+                    {selectedClinic.name}&quot; porque tiene{' '}
+                    <span className='font-semibold text-amber-600'>
+                      {selectedClinic.totalDoctors || 0} doctor
+                      {(selectedClinic.totalDoctors || 0) > 1 ? 'es' : ''}{' '}
+                      asociado
+                      {(selectedClinic.totalDoctors || 0) > 1 ? 's' : ''}
+                    </span>
+                    .
+                  </div>
+                  <div className='bg-amber-50 p-3 rounded-md border border-amber-200'>
+                    <div className='text-sm text-amber-800'>
+                      <strong>Para poder eliminar esta clínica:</strong>
+                    </div>
+                    <ul className='text-sm text-amber-700 mt-1 ml-4 list-disc'>
+                      <li>
+                        Primero desasocie todos los doctores de esta clínica
+                      </li>
+                      <li>O transfiera los doctores a otra clínica</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  Esta acción no se puede deshacer. Se eliminará permanentemente
+                  la clínica &quot;{selectedClinic?.name}&quot; y todos sus
+                  datos asociados.
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={managementLoading}>
-              Cancelar
+              {selectedClinic && (selectedClinic.totalDoctors || 0) > 0
+                ? 'Entendido'
+                : 'Cancelar'}
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={managementLoading}
-              className='bg-red-600 hover:bg-red-700'
-            >
-              {managementLoading ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Eliminando...
-                </>
-              ) : (
-                'Eliminar'
-              )}
-            </AlertDialogAction>
+            {selectedClinic && (selectedClinic.totalDoctors || 0) === 0 && (
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={managementLoading}
+                className='bg-red-600 hover:bg-red-700'
+              >
+                {managementLoading ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Eliminando...
+                  </>
+                ) : (
+                  'Eliminar'
+                )}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

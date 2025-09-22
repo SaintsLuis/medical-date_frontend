@@ -5,6 +5,8 @@ import {
   useCancelAppointment,
   getStatusColor,
   getStatusText,
+  formatAppointmentDate,
+  formatAppointmentTime,
 } from '../index'
 import { DataTableWrapper } from '@/components/dashboard/tables/data-table-wrapper'
 import { Button } from '@/components/ui/button'
@@ -169,19 +171,11 @@ export function AppointmentsList() {
                   <div className='flex items-center gap-4 text-sm text-muted-foreground'>
                     <div className='flex items-center gap-1'>
                       <Calendar className='h-4 w-4' />
-                      {new Date(appointment.date).toLocaleDateString('es-ES', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
+                      {formatAppointmentDate(appointment.date)}
                     </div>
                     <div className='flex items-center gap-1'>
                       <Clock className='h-4 w-4' />
-                      {new Date(appointment.date).toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatAppointmentTime(appointment.date)}
                     </div>
                   </div>
 

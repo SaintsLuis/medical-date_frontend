@@ -6,13 +6,13 @@
 export { LoginForm } from './auth/components/login-form'
 
 // Dashboard Features
-export { DashboardStats } from './dashboard/components/dashboard-stats'
-export { DashboardCharts } from './dashboard/components/dashboard-charts'
-export { ChartAreaInteractive } from './dashboard/components/chart-area-interactive'
+// export { DashboardStats } from './dashboard/components/dashboard-stats'
+// export { DashboardCharts } from './dashboard/components/dashboard-charts'
+// export { ChartAreaInteractive } from './dashboard/components/chart-area-interactive'
 
 // Appointments Features
 export { AppointmentsList } from './appointments/components/appointments-list'
-export { AppointmentsTable } from './appointments/components/appointments-table'
+// export { AppointmentsTable } from './appointments/components/appointments-table'
 
 // Patients Features
 export { PatientsManagement, PatientForm, PatientsSkeleton } from './patients'
@@ -21,7 +21,7 @@ export { PatientsManagement, PatientForm, PatientsSkeleton } from './patients'
 export { DoctorsManagement, DoctorForm, DoctorsSkeleton } from './doctors'
 
 // Clinics Features
-export { ClinicsList } from './clinics/components/clinics-list'
+// export { ClinicsList } from './clinics/components/clinics-list'
 
 // Specialties Features
 export {

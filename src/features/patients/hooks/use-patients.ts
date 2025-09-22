@@ -315,7 +315,7 @@ export function usePatientManagement() {
   return {
     // Datos
     patients: patients.data?.data || [],
-    meta: patients.data?.meta,
+    meta: patients.data?.data?.meta,
     stats: stats.data,
 
     // Estados de carga

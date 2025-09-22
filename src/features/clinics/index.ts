@@ -6,23 +6,12 @@ export { ClinicsSkeletion } from './components/clinics-skeleton'
 // Hooks
 export {
   useClinics,
-  useAllClinics,
   useAllActiveClinics,
-  useClinic,
-  useClinicStats,
-  useClinicSearch,
-  useClinicsByLocation,
-  useClinicsByCity,
-  useClinicsByServices,
-  useClinicsByAmenities,
-  useClinicsNearby,
   useCreateClinic,
   useUpdateClinic,
   useDeleteClinic,
-  useToggleClinicStatus,
-  useExportClinics,
-  usePrefetchClinic,
-  useClinicManagement,
+  useClinicStats,
+  useClinicActions,
   clinicKeys,
 } from './hooks/use-clinics'
 

@@ -130,47 +130,35 @@ export function appointmentToCalendarEvent(
   appointment: Appointment,
   doctor?: Doctor
 ): CalendarEvent {
-  const startDate = new Date(appointment.date)
-  // Corregir: duration está en minutos, no en días
-  const endDate = new Date(
-    startDate.getTime() + appointment.duration * 60 * 1000
-  )
+  // 🔧 FIX: Construir fechas usando UTC para evitar conversión automática del navegador
+  const originalDate = new Date(appointment.date)
 
-  const patientName = appointment.patient
-    ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
-    : `Paciente #${appointment.patientId.slice(-6)}`
+  // Extraer componentes UTC de la fecha original
+  const year = originalDate.getUTCFullYear()
+  const month = originalDate.getUTCMonth()
+  const day = originalDate.getUTCDate()
+  const hours = originalDate.getUTCHours()
+  const minutes = originalDate.getUTCMinutes()
 
-  const doctorName = doctor
-    ? ` ${doctor.firstName} ${doctor.lastName}`
-    : appointment.doctor
-    ? ` ${appointment.doctor.firstName} ${appointment.doctor.lastName}`
-    : `Doctor #${appointment.doctorId.slice(-6)}`
-
-  console.log('🔍 Calendar Event Conversion:', {
-    appointmentId: appointment.id,
-    originalDate: appointment.date,
-    startDate: startDate.toISOString(),
-    duration: appointment.duration,
-    endDate: endDate.toISOString(),
-    patientName,
-    doctorName,
-  })
+  // Construir fechas que React Big Calendar interprete como hora local
+  const start = new Date(year, month, day, hours, minutes)
+  const end = new Date(start.getTime() + appointment.duration * 60 * 1000)
 
   return {
     id: appointment.id,
-    title: `${patientName} - ${doctorName}`,
-    start: startDate,
-    end: endDate,
+    title: appointment.patient
+      ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
+      : 'Cita sin paciente',
+    start,
+    end,
     appointment,
-    resource: doctor
-      ? {
-          id: doctor.id,
-          title: doctorName,
-          type: 'doctor',
-          color: getDoctorColor(doctor.id),
-          isAvailable: doctor.isActive,
-        }
-      : undefined,
+    resource: {
+      id: doctor?.id || appointment.doctorId,
+      title: doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Doctor',
+      type: 'doctor',
+      color: '#3B82F6',
+      isAvailable: true,
+    },
   }
 }
 
@@ -201,7 +189,19 @@ export function formatCalendarTime(
   date: Date,
   use24Hour: boolean = false
 ): string {
-  return format(date, use24Hour ? 'HH:mm' : 'h:mm a', { locale: es })
+  // 🔧 CORREGIDO: Usar UTC directo para consistencia con mobile
+  const hours = date.getUTCHours()
+  const minutes = date.getUTCMinutes()
+
+  if (use24Hour) {
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}`
+  } else {
+    const period = hours >= 12 ? 'PM' : 'AM'
+    const displayHours = hours % 12 === 0 ? 12 : hours % 12
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+  }
 }
 
 export function formatAppointmentDuration(minutes: number): string {
