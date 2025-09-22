@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, RefreshCw, Edit, Trash2 } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  RefreshCw,
+  Edit,
+  Trash2,
+  AlertTriangle,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -11,6 +18,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 // import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -54,6 +69,8 @@ export function SpecialtiesManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(
     null
   )
@@ -101,6 +118,17 @@ export function SpecialtiesManagement() {
   }
 
   const handleDelete = (specialty: Specialty) => {
+    // Validar si la especialidad se puede eliminar
+    if (specialty.doctorCount > 0) {
+      setDeleteError(
+        `No se puede eliminar la especialidad "${specialty.name}" porque tiene ${specialty.doctorCount} médico(s) asociado(s). Primero debes reasignar o remover estos médicos de la especialidad.`
+      )
+      setSelectedSpecialty(specialty)
+      setShowErrorDialog(true)
+      return
+    }
+
+    // Si no hay doctores asociados, mostrar confirmación normal
     setSelectedSpecialty(specialty)
     setShowDeleteConfirm(true)
   }
@@ -112,6 +140,9 @@ export function SpecialtiesManagement() {
       await deleteMutation.mutateAsync(selectedSpecialty.id)
       setShowDeleteConfirm(false)
       setSelectedSpecialty(null)
+      // Refetch de especialidades y estadísticas
+      refetchSpecialties()
+      // Las estadísticas se actualizarán automáticamente por la invalidación en el hook
     } catch {
       // El error se maneja en el hook
     }
@@ -638,6 +669,48 @@ export function SpecialtiesManagement() {
   // Render principal
   // ===================================
 
+  // Diálogo de error para eliminación
+  if (showErrorDialog && selectedSpecialty) {
+    return (
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-destructive'>
+              <AlertTriangle className='h-5 w-5' />
+              No se puede eliminar
+            </DialogTitle>
+            <DialogDescription className='text-left pt-2'>
+              {deleteError}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2'>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setShowErrorDialog(false)
+                setSelectedSpecialty(null)
+                setDeleteError('')
+              }}
+            >
+              Entendido
+            </Button>
+            <Button
+              onClick={() => {
+                setShowErrorDialog(false)
+                setSelectedSpecialty(null)
+                setDeleteError('')
+                // Opcional: abrir formulario de edición para reasignar doctores
+                // handleEdit(selectedSpecialty)
+              }}
+            >
+              Gestionar Doctores
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   if (showForm) {
     return (
       <div className='space-y-6'>
@@ -674,18 +747,17 @@ export function SpecialtiesManagement() {
             <CardTitle>¿Estás seguro?</CardTitle>
             <CardDescription>
               Esta acción no se puede deshacer. Se eliminará permanentemente la
-              especialidad {selectedSpecialty.name} del sistema.
+              especialidad &ldquo;{selectedSpecialty.name}&rdquo; del sistema.
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {selectedSpecialty.doctorCount > 0 && (
-              <Alert variant='destructive'>
-                <AlertDescription>
-                  <strong>Advertencia:</strong> Esta especialidad tiene{' '}
-                  {selectedSpecialty.doctorCount} doctor(es) asignado(s).
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert>
+              <AlertTriangle className='h-4 w-4' />
+              <AlertDescription>
+                Esta especialidad no tiene doctores asociados, por lo que se
+                puede eliminar de forma segura.
+              </AlertDescription>
+            </Alert>
             <div className='flex space-x-2'>
               <Button
                 variant='outline'

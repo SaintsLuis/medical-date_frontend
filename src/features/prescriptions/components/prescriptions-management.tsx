@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Activity, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Search, Filter, Activity, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,10 +20,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  usePrescriptions,
-  useDeletePrescription,
-} from '../hooks/use-prescriptions'
+import { usePrescriptions } from '../hooks/use-prescriptions'
+import { usePatients } from '../../medical-records/hooks/use-patients'
+import { useAuthStore } from '@/features/auth/store/auth'
+import { UserRole } from '@/types/auth'
+import { useDebounce } from '@/hooks/use-debounce'
 import { PrescriptionsTable } from './prescriptions-table'
 import { PrescriptionForm } from './prescription-form'
 import { PrescriptionDetails } from './prescription-details'
@@ -44,6 +45,13 @@ export function PrescriptionsManagement({
   doctorId,
   patientId,
 }: PrescriptionsManagementProps) {
+  const { user } = useAuthStore()
+  const isDoctor = user?.roles.includes(UserRole.DOCTOR)
+  const isAdmin = user?.roles.includes(UserRole.ADMIN)
+
+  // Solo los doctores pueden crear prescripciones, no los administradores
+  const canCreatePrescription = isDoctor && !isAdmin
+
   const [filters, setFilters] = useState<PrescriptionFilters>({
     page: 1,
     pageSize: 10,
@@ -61,18 +69,44 @@ export function PrescriptionsManagement({
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [searchInput, setSearchInput] = useState(filters.search || '')
 
+  // Aplicar debounce a la búsqueda
+  const debouncedSearch = useDebounce(searchInput, 500)
+
+  // Efecto para resetear página cuando cambia la búsqueda
+  useEffect(() => {
+    if (debouncedSearch !== filters.search) {
+      setFilters((prev) => ({
+        ...prev,
+        search: debouncedSearch,
+        page: 1, // Reset page when searching
+      }))
+    }
+  }, [debouncedSearch, filters.search])
+
+  // Pacientes para filtro (solo para doctores)
+  const { data: patientsData } = usePatients({
+    search: '',
+    limit: 100, // Cargar muchos pacientes para el dropdown
+  })
+
   // Query parameters
-  const queryParams = {
-    page: filters.page,
-    pageSize: filters.pageSize,
-    status: filters.status !== 'ALL' ? filters.status : undefined,
-    doctorId: filters.doctorId,
-    patientId: filters.patientId,
-    medicalRecordId: filters.medicalRecordId,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    search: filters.search,
-  }
+  const queryParams = useMemo(
+    () => ({
+      page: filters.page,
+      pageSize: filters.pageSize,
+      status: filters.status !== 'ALL' ? filters.status : undefined,
+      doctorId: filters.doctorId,
+      patientId:
+        filters.patientId && filters.patientId !== 'ALL_PATIENTS'
+          ? filters.patientId
+          : undefined,
+      medicalRecordId: filters.medicalRecordId,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      search: debouncedSearch, // Usar búsqueda con debounce
+    }),
+    [filters, debouncedSearch] // Dependencia en debouncedSearch en lugar de filters.search
+  )
 
   // Data fetching with React Query
   const {
@@ -81,20 +115,6 @@ export function PrescriptionsManagement({
     error,
     refetch,
   } = usePrescriptions(queryParams)
-  const deleteMutation = useDeletePrescription()
-
-  // Debounced search effect
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setFilters((prev) => ({
-        ...prev,
-        search: searchInput,
-        page: 1, // Reset page when searching
-      }))
-    }, 500) // 500ms delay
-
-    return () => clearTimeout(timeoutId)
-  }, [searchInput])
 
   // Force refetch when query params change
   useEffect(() => {
@@ -136,17 +156,6 @@ export function PrescriptionsManagement({
     setSearchInput('')
   }
 
-  const handleDeletePrescription = async (prescription: Prescription) => {
-    try {
-      await deleteMutation.mutateAsync(prescription.id)
-      // Force refetch to ensure UI is updated
-      // The mutation already invalidates queries, but we can force a refetch for extra safety
-    } catch (error) {
-      console.error('Error deleting prescription:', error)
-      // Error is already handled by the mutation's onError
-    }
-  }
-
   const handleViewDetails = (prescription: Prescription) => {
     setSelectedPrescription(prescription)
     setShowDetailsDialog(true)
@@ -166,12 +175,12 @@ export function PrescriptionsManagement({
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-bold tracking-tight'>Prescripciones</h1>
+          <h1 className='text-2xl font-bold tracking-tight'>Recetas Médicas</h1>
           <p className='text-muted-foreground'>
-            Gestiona las prescripciones médicas y medicamentos
+            Gestiona las recetas médicas y medicamentos
           </p>
         </div>
-        {showCreateButton && (
+        {showCreateButton && canCreatePrescription && (
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button>
@@ -218,14 +227,46 @@ export function PrescriptionsManagement({
               </label>
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
+                {searchInput !== debouncedSearch && (
+                  <Loader2 className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin' />
+                )}
                 <Input
-                  placeholder='Buscar prescripciones...'
+                  placeholder='Buscar por paciente, medicamento, diagnóstico...'
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className='pl-10'
+                  className='pl-10 pr-10'
                 />
               </div>
             </div>
+
+            {/* Patient Filter - Only for doctors */}
+            {isDoctor && (
+              <div>
+                <label className='text-sm font-medium text-gray-700 mb-1 block'>
+                  Paciente
+                </label>
+                <Select
+                  value={filters.patientId || ''}
+                  onValueChange={(value) =>
+                    handleFilterChange('patientId', value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Todos los pacientes' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='ALL_PATIENTS'>
+                      Todos los pacientes
+                    </SelectItem>
+                    {patientsData?.data?.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id}>
+                        {patient.user.firstName} {patient.user.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className='text-sm font-medium text-gray-700 mb-1 block'>
@@ -328,7 +369,6 @@ export function PrescriptionsManagement({
         loading={loading}
         onView={handleViewDetails}
         onEdit={handleEditPrescription}
-        onDelete={handleDeletePrescription}
       />
 
       {/* Pagination */}

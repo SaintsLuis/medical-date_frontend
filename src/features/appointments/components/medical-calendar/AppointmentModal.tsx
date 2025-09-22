@@ -648,35 +648,40 @@ export function AppointmentModal({
         }
 
         // Construir fecha de forma segura considerando zona horaria
-        // Crear fecha en formato ISO pero asegurándonos que sea válida
-        let dateTimeString = `${formData.date.trim()}T${formData.time.trim()}`
+        // 🔧 FIX: Construir fecha directamente en UTC para evitar conversión automática
+        const [year, month, day] = formData.date.trim().split('-').map(Number)
+        const [hours, minutes] = formData.time.trim().split(':').map(Number)
 
-        // Asegurar que el tiempo tenga formato completo (HH:MM:SS)
-        if (formData.time.trim().length === 5) {
-          // HH:MM format
-          dateTimeString += ':00'
-        }
+        // Crear fecha usando UTC para evitar conversión de zona horaria
+        const appointmentDate = new Date()
+        appointmentDate.setUTCFullYear(year, month - 1, day) // month es 0-indexed
+        appointmentDate.setUTCHours(hours, minutes, 0, 0)
 
-        console.log('🔍 DateTime string:', dateTimeString)
-
-        const appointmentDate = new Date(dateTimeString)
+        console.log('🔍 UTC Date construction:', {
+          inputDate: formData.date,
+          inputTime: formData.time,
+          parsedYear: year,
+          parsedMonth: month,
+          parsedDay: day,
+          parsedHours: hours,
+          parsedMinutes: minutes,
+          resultDate: appointmentDate,
+          resultUTC: appointmentDate.toISOString(),
+        })
 
         // Verificar que la fecha sea válida antes de continuar
         if (isNaN(appointmentDate.getTime())) {
           console.error('❌ Invalid date constructed:', {
             date: formData.date,
             time: formData.time,
-            combined: dateTimeString,
             result: appointmentDate,
           })
           throw new Error('Fecha y hora inválidas')
         }
 
-        // Convertir a zona horaria de República Dominicana (UTC-4)
-        // Nota: En la mayoría de casos, el backend se encarga de esto,
-        // pero nos aseguramos de enviar una fecha válida en ISO
+        // Ahora sí podemos usar toISOString() ya que construimos en UTC
         const isoDate = appointmentDate.toISOString()
-        console.log('✅ Valid date constructed:', isoDate)
+        console.log('✅ Valid UTC date constructed:', isoDate)
 
         appointmentData = {
           patientId: formData.patientId,

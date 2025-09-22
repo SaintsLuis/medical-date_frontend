@@ -61,7 +61,12 @@ import type {
   Doctor,
 } from './types'
 
-import { Appointment, AppointmentStatus, AppointmentType } from '../../types'
+import {
+  Appointment,
+  AppointmentStatus,
+  AppointmentType,
+  formatAppointmentDate,
+} from '../../types'
 
 // Utils
 import {
@@ -468,7 +473,6 @@ export function MedicalCalendar({
       onAppointmentUpdate,
       onAppointmentCreate,
       appointments,
-      doctors,
     ]
   )
 
@@ -653,26 +657,17 @@ export function MedicalCalendar({
                   <CalendarIcon className='h-4 w-4 text-gray-600' />
                   <div>
                     <div className='font-medium'>
-                      {format(
-                        new Date(appointment.date),
-                        "EEEE, dd 'de' MMMM 'de' yyyy",
-                        {
-                          locale: es,
-                        }
-                      )}
+                      {formatAppointmentDate(appointment.date)}
                     </div>
                     <div className='text-gray-600'>
-                      {format(new Date(appointment.date), 'h:mm a', {
-                        locale: es,
-                      })}
+                      {/* 🔧 CORREGIDO: Usar formatCalendarTime que ya tiene la lógica UTC correcta */}
+                      {formatCalendarTime(new Date(appointment.date))}
                       {' - '}
-                      {format(
+                      {formatCalendarTime(
                         new Date(
                           new Date(appointment.date).getTime() +
                             appointment.duration * 60 * 1000
-                        ),
-                        'h:mm a',
-                        { locale: es }
+                        )
                       )}{' '}
                       ({formatAppointmentDuration(appointment.duration)})
                     </div>

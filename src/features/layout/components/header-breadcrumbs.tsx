@@ -13,7 +13,7 @@ import React from 'react'
 
 // Mapeo de rutas en español a nombres legibles
 const ROUTE_NAMES = {
-  'historias-clinicas': 'Historias Clínicas',
+  'registros-medicos': 'Registros Médicos',
   citas: 'Citas',
   doctores: 'Doctores',
   pacientes: 'Pacientes',
@@ -28,7 +28,7 @@ const ROUTE_NAMES = {
   perfil: 'Perfil',
   configuraciones: 'Configuraciones',
   // Rutas en inglés (para compatibilidad)
-  'medical-records': 'Historias Clínicas',
+  'medical-records': 'Registros Médicos',
   appointments: 'Citas',
   doctors: 'Doctores',
   patients: 'Pacientes',

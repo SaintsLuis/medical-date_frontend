@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuthStore } from '@/features/auth/store/auth'
+// import { useAuthStore } from '@/features/auth/store/auth'
 import { UserRole } from '@/types/auth'
 
 interface RegisterFormProps {
@@ -38,7 +38,7 @@ export function RegisterForm({ onSuccess, onCancel }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const { register } = useAuthStore()
+  //const { register } = useAuthStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,7 +46,7 @@ export function RegisterForm({ onSuccess, onCancel }: RegisterFormProps) {
     setError('')
 
     try {
-      await register(formData)
+      // await register(formData)
       setFormData({
         email: '',
         password: '',

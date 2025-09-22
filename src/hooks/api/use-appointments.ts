@@ -30,9 +30,22 @@ export function useAppointments(filters?: Record<string, unknown>) {
       if (config.USE_MOCK_AUTH) {
         return getMockAppointments(filters)
       }
-      const response = await apiClient.get<Appointment[]>('/appointments', {
-        params: filters,
-      })
+      // apiClient.get expects only the URL and optional RequestInit, not axios-style config
+      // So, we need to manually build the query string for filters
+      const queryString = filters
+        ? '?' +
+          Object.entries(filters)
+            .map(
+              ([key, value]) =>
+                encodeURIComponent(key) +
+                '=' +
+                encodeURIComponent(String(value))
+            )
+            .join('&')
+        : ''
+      const response = await apiClient.get<Appointment[]>(
+        `/appointments${queryString}`
+      )
       return response
     },
     staleTime: 2 * 60 * 1000, // 2 minutos

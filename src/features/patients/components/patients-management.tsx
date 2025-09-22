@@ -121,6 +121,8 @@ export function PatientsManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null)
+  const [persistentError, setPersistentError] = useState<string | null>(null)
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
 
   // Parámetros de consulta
   const queryParams: QueryPatientsParams = {
@@ -202,9 +204,31 @@ export function PatientsManagement() {
 
   const handleConfirmDelete = async () => {
     if (patientToDelete) {
-      await deleteMutation.mutateAsync(patientToDelete.id)
-      setShowDeleteDialog(false)
-      setPatientToDelete(null)
+      try {
+        await deleteMutation.mutateAsync(patientToDelete.id)
+        setShowDeleteDialog(false)
+        setPatientToDelete(null)
+        refetch()
+      } catch (error: unknown) {
+        console.error('Error al eliminar paciente:', error)
+
+        // Extraer mensaje de error específico
+        let errorMessage = 'Error desconocido al eliminar el paciente.'
+
+        if (error && typeof error === 'object' && 'response' in error) {
+          const response = (
+            error as { response?: { data?: { message?: string } } }
+          ).response
+          if (response?.data?.message) {
+            errorMessage = response.data.message
+          }
+        }
+
+        // Mostrar error persistente que requiere confirmación del usuario
+        setPersistentError(errorMessage)
+        setShowErrorDialog(true)
+        setShowDeleteDialog(false)
+      }
     }
   }
 
@@ -787,16 +811,37 @@ export function PatientsManagement() {
               <AlertTriangle className='h-6 w-6 text-red-600' />
             </div>
             <DialogTitle className='text-lg font-semibold text-gray-900'>
-              Confirmar Eliminación
+              ⚠️ Confirmar Eliminación de Paciente
             </DialogTitle>
-            <DialogDescription className='text-gray-600 mt-2'>
-              ¿Estás seguro de que quieres eliminar al paciente{' '}
-              <span className='font-semibold text-gray-900'>
-                {patientToDelete?.user.firstName}{' '}
-                {patientToDelete?.user.lastName}
-              </span>
-              ? Esta acción no se puede deshacer.
-            </DialogDescription>
+            <div className='text-gray-600 mt-2 space-y-2'>
+              <p>
+                ¿Estás seguro de que quieres eliminar al paciente{' '}
+                <span className='font-semibold text-gray-900'>
+                  {patientToDelete?.user.firstName}{' '}
+                  {patientToDelete?.user.lastName}
+                </span>
+                ?
+              </p>
+              <div className='bg-amber-50 border border-amber-200 rounded-lg p-3 text-left'>
+                <p className='text-sm text-amber-800 font-medium flex items-center gap-2'>
+                  <AlertTriangle className='h-4 w-4 flex-shrink-0' />
+                  Advertencias importantes:
+                </p>
+                <ul className='text-xs text-amber-700 mt-1 space-y-1'>
+                  <li>• Esta acción NO se puede deshacer</li>
+                  <li>
+                    • Si tiene historial médico, la eliminación será BLOQUEADA
+                  </li>
+                  <li>
+                    • Si tienen citas o prescripciones activas, primero deben
+                    cancelarse
+                  </li>
+                  <li>
+                    • Considera DESACTIVAR el usuario en lugar de eliminar
+                  </li>
+                </ul>
+              </div>
+            </div>
           </DialogHeader>
           <div className='flex justify-end space-x-3 pt-4'>
             <Button
@@ -819,8 +864,54 @@ export function PatientsManagement() {
                   Eliminando...
                 </>
               ) : (
-                'Eliminar'
+                <>
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Sí, Eliminar
+                </>
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de error persistente */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent className='max-w-lg'>
+          <DialogHeader className='text-center'>
+            <div className='mx-auto h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-4'>
+              <AlertCircle className='h-6 w-6 text-red-600' />
+            </div>
+            <DialogTitle className='text-lg font-semibold text-red-900'>
+              🚨 Error en la Eliminación
+            </DialogTitle>
+            <div className='text-gray-600 mt-2'>
+              <div className='bg-red-50 border border-red-200 rounded-lg p-4 text-left'>
+                <p className='text-sm text-red-800 whitespace-pre-wrap'>
+                  {persistentError}
+                </p>
+              </div>
+              <div className='bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 text-left'>
+                <p className='text-sm text-blue-800 font-medium'>
+                  💡 Alternativa recomendada:
+                </p>
+                <p className='text-xs text-blue-700 mt-1'>
+                  Si necesitas que el paciente no aparezca en el sistema,
+                  considera desactivar su cuenta en lugar de eliminarla. Esto
+                  preservará el historial médico y cumplirá con las regulaciones
+                  sanitarias.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className='flex justify-center pt-4'>
+            <Button
+              onClick={() => {
+                setShowErrorDialog(false)
+                setPersistentError(null)
+              }}
+              className='px-6'
+            >
+              Entendido
             </Button>
           </div>
         </DialogContent>

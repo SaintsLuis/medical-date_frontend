@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,16 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Search,
@@ -36,8 +26,12 @@ import {
   CheckCircle,
   Eye,
   Edit,
-  Trash2,
+  Archive,
   RefreshCw,
+  Heart,
+  Activity,
+  Thermometer,
+  Weight,
 } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/store/auth'
 import { UserRole } from '@/types/auth'
@@ -45,7 +39,7 @@ import {
   useMedicalRecords,
   useMyMedicalRecords,
   useFollowUpRecords,
-  useDeleteMedicalRecord,
+  useArchiveMedicalRecord,
 } from '../hooks/use-medical-records'
 import {
   MedicalRecord,
@@ -60,12 +54,17 @@ import {
   formatDate,
   isFollowUpOverdue,
   getDaysUntilFollowUp,
+  formatBloodType,
 } from '../types'
 import { MedicalRecordsSkeleton } from './medical-records-skeleton'
 import { MedicalRecordForm } from './medical-record-form'
 import { MedicalRecordDetails } from './medical-record-details'
 import { MedicalRecordsPagination } from './medical-records-pagination'
 import { MedicalRecordAnalytics } from './medical-record-analytics'
+import { ArchiveMedicalRecordDialog } from './archive-medical-record-dialog'
+import { ArchivedMedicalRecords } from './archived-medical-records'
+import { usePatients } from '../hooks/use-patients'
+import { useDebounce } from '@/hooks/use-debounce'
 // import { MedicalRecordsAnalytics } from './medical-records-analytics'
 
 export function MedicalRecordsManagement() {
@@ -80,32 +79,52 @@ export function MedicalRecordsManagement() {
   const [filters, setFilters] = useState<MedicalRecordFilters>(
     MEDICAL_RECORD_FILTER_DEFAULTS
   )
+  const [searchInput, setSearchInput] = useState('') // Estado local para la búsqueda
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(
     null
   )
 
+  // Aplicar debounce a la búsqueda
+  const debouncedSearch = useDebounce(searchInput, 500) // 500ms de retraso
+
+  // Actualizar filtros cuando cambie la búsqueda con debounce
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, search: debouncedSearch }))
+    setPage(1) // Reset to first page when searching
+  }, [debouncedSearch])
+
   // Query parameters based on filters
-  const queryParams = {
-    page,
-    limit,
-    ...(filters.patientProfileId && {
-      patientProfileId: filters.patientProfileId,
+  const queryParams = useMemo(
+    () => ({
+      page,
+      limit,
+      ...(filters.patientProfileId &&
+        filters.patientProfileId !== 'ALL_PATIENTS' && {
+          patientProfileId: filters.patientProfileId,
+        }),
+      ...(filters.doctorId && { doctorId: filters.doctorId }),
+      ...(filters.category !== 'ALL' && { category: filters.category }),
+      ...(filters.priority !== 'ALL' && { priority: filters.priority }),
+      ...(filters.startDate && { startDate: filters.startDate }),
+      ...(filters.endDate && { endDate: filters.endDate }),
+      ...(filters.search && { search: filters.search }),
+      ...(filters.followUpOnly && { followUpOnly: true }),
     }),
-    ...(filters.doctorId && { doctorId: filters.doctorId }),
-    ...(filters.category !== 'ALL' && { category: filters.category }),
-    ...(filters.priority !== 'ALL' && { priority: filters.priority }),
-    ...(filters.startDate && { startDate: filters.startDate }),
-    ...(filters.endDate && { endDate: filters.endDate }),
-    ...(filters.search && { search: filters.search }),
-    ...(filters.followUpOnly && { followUpOnly: true }),
-  }
+    [page, limit, filters]
+  )
 
   // Data fetching - Fix conditional hooks
   const myRecordsQuery = useMyMedicalRecords(queryParams, isDoctor)
   const allRecordsQuery = useMedicalRecords(queryParams, isAdmin && !isDoctor)
+
+  // Pacientes para filtro (solo para doctores)
+  const { data: patientsData } = usePatients({
+    search: '',
+    limit: 100, // Cargar muchos pacientes para el dropdown
+  })
 
   // Force refetch when query params change
   useEffect(() => {
@@ -146,7 +165,7 @@ export function MedicalRecordsManagement() {
     useFollowUpRecords(isDoctor)
 
   // Mutations
-  const deleteMutation = useDeleteMedicalRecord()
+  const archiveMutation = useArchiveMedicalRecord()
 
   // Event handlers
   const handleFilterChange = (
@@ -159,6 +178,7 @@ export function MedicalRecordsManagement() {
 
   const handleResetFilters = () => {
     setFilters(MEDICAL_RECORD_FILTER_DEFAULTS)
+    setSearchInput('') // Limpiar también el input de búsqueda
     setPage(1)
   }
 
@@ -191,17 +211,20 @@ export function MedicalRecordsManagement() {
     setIsDetailsOpen(true)
   }
 
-  const handleDeleteRecord = (record: MedicalRecord) => {
+  const handleArchiveRecord = (record: MedicalRecord) => {
     setSelectedRecord(record)
-    setIsDeleteDialogOpen(true)
+    setIsArchiveDialogOpen(true)
   }
 
-  const confirmDelete = async () => {
+  const confirmArchive = async (reason: string) => {
     if (!selectedRecord) return
 
     try {
-      await deleteMutation.mutateAsync(selectedRecord.id)
-      setIsDeleteDialogOpen(false)
+      await archiveMutation.mutateAsync({
+        id: selectedRecord.id,
+        data: { reason },
+      })
+      setIsArchiveDialogOpen(false)
       setSelectedRecord(null)
 
       // Force refetch to ensure UI is updated
@@ -211,7 +234,7 @@ export function MedicalRecordsManagement() {
         allRecordsQuery.refetch()
       }
     } catch (error) {
-      console.error('Error deleting record:', error)
+      console.error('Error archiving record:', error)
       // Error is already handled by the mutation's onError
     }
   }
@@ -274,7 +297,13 @@ export function MedicalRecordsManagement() {
         className='space-y-6'
       >
         <TabsList
-          className={`grid w-full ${isDoctor ? 'grid-cols-3' : 'grid-cols-2'}`}
+          className={`grid w-full ${
+            isDoctor && isAdmin
+              ? 'grid-cols-4'
+              : isDoctor
+              ? 'grid-cols-3'
+              : 'grid-cols-2'
+          }`}
         >
           <TabsTrigger value='records'>
             <FileText className='mr-2 h-4 w-4' />
@@ -295,6 +324,12 @@ export function MedicalRecordsManagement() {
               </Badge>
             )}
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value='archived'>
+              <Archive className='mr-2 h-4 w-4' />
+              Archivados
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Records Tab */}
@@ -308,7 +343,13 @@ export function MedicalRecordsManagement() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+              <div
+                className={`grid gap-4 ${
+                  isDoctor
+                    ? 'md:grid-cols-2 lg:grid-cols-5'
+                    : 'md:grid-cols-2 lg:grid-cols-4'
+                }`}
+              >
                 {/* Search */}
                 <div>
                   <label className='text-sm font-medium mb-2 block'>
@@ -317,15 +358,47 @@ export function MedicalRecordsManagement() {
                   <div className='relative'>
                     <Search className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                     <Input
-                      placeholder='Síntomas, diagnóstico...'
-                      value={filters.search}
-                      onChange={(e) =>
-                        handleFilterChange('search', e.target.value)
-                      }
+                      placeholder='Buscar por paciente, síntomas, diagnóstico...'
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className='pl-10'
                     />
+                    {searchInput !== debouncedSearch && (
+                      <div className='absolute right-3 top-3'>
+                        <div className='h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Patient Filter - Only for doctors */}
+                {isDoctor && (
+                  <div>
+                    <label className='text-sm font-medium mb-2 block'>
+                      Paciente
+                    </label>
+                    <Select
+                      value={filters.patientProfileId}
+                      onValueChange={(value) =>
+                        handleFilterChange('patientProfileId', value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder='Todos los pacientes' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='ALL_PATIENTS'>
+                          Todos los pacientes
+                        </SelectItem>
+                        {patientsData?.data?.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.user.firstName} {patient.user.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Category */}
                 <div>
@@ -389,39 +462,6 @@ export function MedicalRecordsManagement() {
                       handleFilterChange('startDate', e.target.value)
                     }
                   />
-                </div>
-
-                {/* Registros por página */}
-                <div>
-                  <label className='text-sm font-medium mb-2 block'>
-                    Registros por página
-                  </label>
-                  <Select
-                    value={limit.toString()}
-                    onValueChange={(value) => {
-                      const newLimit = parseInt(value)
-                      setLimit(newLimit)
-                      setPage(1) // Reset to first page when changing limit
-                      console.log(
-                        '📄 [MedicalRecordsManagement] Limit changed:',
-                        {
-                          from: limit,
-                          to: newLimit,
-                        }
-                      )
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='5'>5 registros</SelectItem>
-                      <SelectItem value='10'>10 registros</SelectItem>
-                      <SelectItem value='20'>20 registros</SelectItem>
-                      <SelectItem value='50'>50 registros</SelectItem>
-                      <SelectItem value='100'>100 registros</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
@@ -495,124 +535,458 @@ export function MedicalRecordsManagement() {
                 <MedicalRecordsSkeleton />
               ) : recordsData && recordsData.data.length > 0 ? (
                 <div className='space-y-4'>
-                  {/* Mobile/Desktop responsive list */}
-                  <div className='space-y-3'>
-                    {recordsData.data.map((record) => (
-                      <div
-                        key={record.id}
-                        className='flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors'
-                      >
-                        <div className='flex items-center space-x-4'>
-                          {/* Patient/Doctor Avatar */}
-                          <Avatar>
-                            <AvatarFallback>
-                              {(() => {
-                                // Use direct patient object instead of patientProfile.user
-                                const initials = isDoctor
-                                  ? getInitials(
+                  {/* Desktop Table View */}
+                  <div className='hidden lg:block overflow-x-auto'>
+                    <table className='w-full border-collapse'>
+                      <thead>
+                        <tr className='border-b'>
+                          <th className='text-left p-3 font-semibold'>
+                            Paciente
+                          </th>
+                          {isAdmin && (
+                            <th className='text-left p-3 font-semibold'>
+                              Doctor
+                            </th>
+                          )}
+                          <th className='text-left p-3 font-semibold'>Fecha</th>
+                          <th className='text-left p-3 font-semibold'>
+                            Categoría
+                          </th>
+                          <th className='text-left p-3 font-semibold'>
+                            Prioridad
+                          </th>
+                          <th className='text-left p-3 font-semibold'>
+                            Diagnóstico
+                          </th>
+                          <th className='text-left p-3 font-semibold'>
+                            Signos Vitales
+                          </th>
+                          <th className='text-left p-3 font-semibold'>
+                            Seguimiento
+                          </th>
+                          <th className='text-center p-3 font-semibold'>
+                            Acciones
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recordsData.data.map((record) => (
+                          <tr
+                            key={record.id}
+                            className='border-b hover:bg-muted/50 transition-colors'
+                          >
+                            {/* Paciente */}
+                            <td className='p-3'>
+                              <div className='flex items-center space-x-3'>
+                                <Avatar className='h-10 w-10'>
+                                  <AvatarFallback className='bg-blue-100 text-blue-700'>
+                                    {getInitials(
                                       record.patient?.firstName || '',
                                       record.patient?.lastName || ''
-                                    )
-                                  : getInitials(
-                                      record.doctor?.firstName || '',
-                                      record.doctor?.lastName || ''
-                                    )
+                                    )}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className='font-medium text-sm'>
+                                    {record.patient?.firstName}{' '}
+                                    {record.patient?.lastName}
+                                  </div>
+                                  <div className='text-xs text-muted-foreground'>
+                                    {record.patient?.email}
+                                  </div>
+                                  {record.patient?.bloodType && (
+                                    <div className='text-xs text-red-600 font-medium'>
+                                      {formatBloodType(
+                                        record.patient.bloodType
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
 
-                                return initials
-                              })()}
-                            </AvatarFallback>
-                          </Avatar>
+                            {/* Doctor - Solo para administradores */}
+                            {isAdmin && (
+                              <td className='p-3'>
+                                <div className='flex items-center space-x-3'>
+                                  <Avatar className='h-10 w-10'>
+                                    <AvatarFallback className='bg-green-100 text-green-700'>
+                                      {getInitials(
+                                        record.doctor?.firstName || '',
+                                        record.doctor?.lastName || ''
+                                      )}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className='font-medium text-sm'>
+                                      {record.doctor?.firstName}{' '}
+                                      {record.doctor?.lastName}
+                                    </div>
+                                    <div className='text-xs text-muted-foreground'>
+                                      {record.doctor?.email}
+                                    </div>
+                                    {record.doctor?.doctorProfile?.license && (
+                                      <div className='text-xs text-green-600 font-medium'>
+                                        Lic:{' '}
+                                        {record.doctor.doctorProfile.license}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            )}
 
-                          <div className='space-y-1'>
-                            <div className='flex items-center space-x-2'>
-                              <h4 className='font-medium'>
-                                {(() => {
-                                  // Use direct patient object instead of patientProfile.user
-                                  const displayName = isDoctor
-                                    ? `${record.patient?.firstName || 'N/A'} ${
-                                        record.patient?.lastName || 'N/A'
-                                      }`
-                                    : `${record.doctor?.firstName} ${record.doctor?.lastName}`
+                            {/* Fecha */}
+                            <td className='p-3'>
+                              <div className='text-sm font-medium'>
+                                {formatDate(record.date)}
+                              </div>
+                              <div className='text-xs text-muted-foreground'>
+                                {new Date(record.date).toLocaleTimeString(
+                                  'es-ES',
+                                  {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }
+                                )}
+                              </div>
+                            </td>
 
-                                  return displayName
-                                })()}
-                              </h4>
-                              {getStatusIcon(record)}
-                            </div>
-
-                            <div className='flex items-center space-x-4 text-sm text-muted-foreground'>
-                              <span>{formatDate(record.date)}</span>
+                            {/* Categoría */}
+                            <td className='p-3'>
                               {record.category && (
                                 <Badge
                                   variant='outline'
-                                  className={getCategoryColor(record.category)}
+                                  className={`${getCategoryColor(
+                                    record.category
+                                  )} text-xs`}
                                 >
                                   {getCategoryText(record.category)}
                                 </Badge>
                               )}
+                            </td>
+
+                            {/* Prioridad */}
+                            <td className='p-3'>
                               {record.priority && (
                                 <Badge
                                   variant='outline'
-                                  className={getPriorityColor(record.priority)}
+                                  className={`${getPriorityColor(
+                                    record.priority
+                                  )} text-xs`}
                                 >
                                   {getPriorityText(record.priority)}
                                 </Badge>
                               )}
-                            </div>
+                            </td>
 
-                            <p className='text-sm text-muted-foreground line-clamp-1'>
+                            {/* Diagnóstico */}
+                            <td className='p-3 max-w-xs'>
+                              <div className='text-sm font-medium line-clamp-2'>
+                                {record.diagnosis}
+                              </div>
+                              {record.symptoms &&
+                                record.symptoms.length > 0 && (
+                                  <div className='text-xs text-muted-foreground mt-1'>
+                                    Síntomas:{' '}
+                                    {record.symptoms.slice(0, 2).join(', ')}
+                                    {record.symptoms.length > 2 && '...'}
+                                  </div>
+                                )}
+                            </td>
+
+                            {/* Signos Vitales */}
+                            <td className='p-3'>
+                              {record.vitalSigns ? (
+                                <div className='space-y-1 text-xs'>
+                                  {record.vitalSigns.bloodPressure && (
+                                    <div className='flex items-center gap-1'>
+                                      <Heart className='h-3 w-3 text-red-500' />
+                                      {record.vitalSigns.bloodPressure}
+                                    </div>
+                                  )}
+                                  {record.vitalSigns.heartRate && (
+                                    <div className='flex items-center gap-1'>
+                                      <Activity className='h-3 w-3 text-pink-500' />
+                                      {record.vitalSigns.heartRate} bpm
+                                    </div>
+                                  )}
+                                  {record.vitalSigns.temperature && (
+                                    <div className='flex items-center gap-1'>
+                                      <Thermometer className='h-3 w-3 text-orange-500' />
+                                      {record.vitalSigns.temperature}°C
+                                    </div>
+                                  )}
+                                  {record.vitalSigns.weight && (
+                                    <div className='flex items-center gap-1'>
+                                      <Weight className='h-3 w-3 text-purple-500' />
+                                      {record.vitalSigns.weight} kg
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className='text-xs text-muted-foreground italic'>
+                                  No registrados
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Seguimiento */}
+                            <td className='p-3'>
+                              {record.followUpDate ? (
+                                <div className='text-xs'>
+                                  <div className='font-medium'>
+                                    {formatDate(record.followUpDate)}
+                                  </div>
+                                  <div
+                                    className={`flex items-center gap-1 ${
+                                      isFollowUpOverdue(record.followUpDate)
+                                        ? 'text-red-600'
+                                        : 'text-yellow-600'
+                                    }`}
+                                  >
+                                    {isFollowUpOverdue(record.followUpDate) ? (
+                                      <AlertTriangle className='h-3 w-3' />
+                                    ) : (
+                                      <Clock className='h-3 w-3' />
+                                    )}
+                                    {isFollowUpOverdue(record.followUpDate)
+                                      ? `Vencido (${Math.abs(
+                                          getDaysUntilFollowUp(
+                                            record.followUpDate
+                                          )
+                                        )}d)`
+                                      : `En ${getDaysUntilFollowUp(
+                                          record.followUpDate
+                                        )}d`}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className='text-xs text-muted-foreground italic'>
+                                  Sin seguimiento
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Acciones */}
+                            <td className='p-3'>
+                              <div className='flex items-center justify-center space-x-1'>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  onClick={() => handleViewRecord(record)}
+                                  className='h-8 w-8 p-0'
+                                >
+                                  <Eye className='h-4 w-4' />
+                                </Button>
+
+                                {isDoctor && (
+                                  <>
+                                    <Button
+                                      variant='ghost'
+                                      size='sm'
+                                      onClick={() => handleEditRecord(record)}
+                                      className='h-8 w-8 p-0'
+                                    >
+                                      <Edit className='h-4 w-4' />
+                                    </Button>
+
+                                    {isAdmin && (
+                                      <Button
+                                        variant='ghost'
+                                        size='sm'
+                                        onClick={() =>
+                                          handleArchiveRecord(record)
+                                        }
+                                        className='h-8 w-8 p-0 text-amber-600 hover:text-amber-700'
+                                      >
+                                        <Archive className='h-4 w-4' />
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className='lg:hidden space-y-3'>
+                    {recordsData.data.map((record) => (
+                      <div
+                        key={record.id}
+                        className='border rounded-lg p-4 space-y-4 hover:bg-muted/50 transition-colors'
+                      >
+                        {/* Header con paciente y doctor */}
+                        <div className='flex items-start justify-between'>
+                          <div className='flex items-center space-x-3'>
+                            <Avatar className='h-12 w-12'>
+                              <AvatarFallback className='bg-blue-100 text-blue-700'>
+                                {getInitials(
+                                  record.patient?.firstName || '',
+                                  record.patient?.lastName || ''
+                                )}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className='font-medium text-sm'>
+                                {record.patient?.firstName}{' '}
+                                {record.patient?.lastName}
+                              </div>
+                              <div className='text-xs text-muted-foreground'>
+                                {record.patient?.email}
+                              </div>
+                              {record.patient?.bloodType && (
+                                <Badge
+                                  variant='outline'
+                                  className='text-xs mt-1'
+                                >
+                                  {formatBloodType(record.patient.bloodType)}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Doctor - Solo para administradores */}
+                          {isAdmin && (
+                            <div className='text-right'>
+                              <div className='text-xs text-muted-foreground'>
+                                Doctor
+                              </div>
+                              <div className='text-sm font-medium'>
+                                {record.doctor?.firstName}{' '}
+                                {record.doctor?.lastName}
+                              </div>
+                            </div>
+                          )}
+                        </div>{' '}
+                        {/* Información médica */}
+                        <div className='space-y-2'>
+                          <div className='flex items-center space-x-2 text-sm'>
+                            <span className='font-medium'>Fecha:</span>
+                            <span>{formatDate(record.date)}</span>
+                            {getStatusIcon(record)}
+                          </div>
+
+                          <div className='flex flex-wrap gap-2'>
+                            {record.category && (
+                              <Badge
+                                variant='outline'
+                                className={getCategoryColor(record.category)}
+                              >
+                                {getCategoryText(record.category)}
+                              </Badge>
+                            )}
+                            {record.priority && (
+                              <Badge
+                                variant='outline'
+                                className={getPriorityColor(record.priority)}
+                              >
+                                {getPriorityText(record.priority)}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className='text-xs font-medium text-muted-foreground'>
+                              Diagnóstico:
+                            </span>
+                            <p className='text-sm mt-1 line-clamp-2'>
                               {record.diagnosis}
                             </p>
                           </div>
-                        </div>
 
-                        <div className='flex items-center space-x-2'>
+                          {/* Signos vitales resumidos */}
+                          {record.vitalSigns && (
+                            <div className='grid grid-cols-2 gap-2 text-xs'>
+                              {record.vitalSigns.bloodPressure && (
+                                <div className='flex items-center gap-1'>
+                                  <Heart className='h-3 w-3 text-red-500' />
+                                  {record.vitalSigns.bloodPressure}
+                                </div>
+                              )}
+                              {record.vitalSigns.heartRate && (
+                                <div className='flex items-center gap-1'>
+                                  <Activity className='h-3 w-3 text-pink-500' />
+                                  {record.vitalSigns.heartRate} bpm
+                                </div>
+                              )}
+                              {record.vitalSigns.temperature && (
+                                <div className='flex items-center gap-1'>
+                                  <Thermometer className='h-3 w-3 text-orange-500' />
+                                  {record.vitalSigns.temperature}°C
+                                </div>
+                              )}
+                              {record.vitalSigns.weight && (
+                                <div className='flex items-center gap-1'>
+                                  <Weight className='h-3 w-3 text-purple-500' />
+                                  {record.vitalSigns.weight} kg
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Seguimiento */}
                           {record.followUpDate && (
-                            <div className='text-right text-sm'>
-                              <div className='text-muted-foreground'>
+                            <div className='text-xs'>
+                              <span className='font-medium text-muted-foreground'>
                                 Seguimiento:
-                              </div>
+                              </span>
                               <div
-                                className={
+                                className={`inline-flex items-center gap-1 ml-2 ${
                                   isFollowUpOverdue(record.followUpDate)
                                     ? 'text-red-600'
                                     : 'text-yellow-600'
-                                }
+                                }`}
                               >
+                                {isFollowUpOverdue(record.followUpDate) ? (
+                                  <AlertTriangle className='h-3 w-3' />
+                                ) : (
+                                  <Clock className='h-3 w-3' />
+                                )}
                                 {formatDate(record.followUpDate)}
                               </div>
                             </div>
                           )}
+                        </div>
+                        {/* Acciones */}
+                        <div className='flex items-center justify-end space-x-2 pt-2 border-t'>
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => handleViewRecord(record)}
+                          >
+                            <Eye className='h-4 w-4 mr-1' />
+                            Ver
+                          </Button>
 
-                          <div className='flex items-center space-x-1'>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleViewRecord(record)}
-                            >
-                              <Eye className='h-4 w-4' />
-                            </Button>
+                          {isDoctor && (
+                            <>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handleEditRecord(record)}
+                              >
+                                <Edit className='h-4 w-4 mr-1' />
+                                Editar
+                              </Button>
 
-                            {isDoctor && (
-                              <>
+                              {isAdmin && (
                                 <Button
-                                  variant='ghost'
+                                  variant='outline'
                                   size='sm'
-                                  onClick={() => handleEditRecord(record)}
+                                  onClick={() => handleArchiveRecord(record)}
+                                  className='text-amber-600 hover:text-amber-700'
                                 >
-                                  <Edit className='h-4 w-4' />
+                                  <Archive className='h-4 w-4 mr-1' />
+                                  Archivar
                                 </Button>
-
-                                <Button
-                                  variant='ghost'
-                                  size='sm'
-                                  onClick={() => handleDeleteRecord(record)}
-                                >
-                                  <Trash2 className='h-4 w-4' />
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -620,7 +994,7 @@ export function MedicalRecordsManagement() {
 
                   {/* Pagination */}
                   {recordsData.meta.totalPages > 1 && (
-                    <div className='flex items-center justify-between'>
+                    <div className='flex items-center justify-between mt-6'>
                       <div className='text-sm text-muted-foreground'>
                         Mostrando {(page - 1) * limit + 1} a{' '}
                         {Math.min(page * limit, recordsData.meta.total)} de{' '}
@@ -801,6 +1175,13 @@ export function MedicalRecordsManagement() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Archived Tab */}
+        {isAdmin && (
+          <TabsContent value='archived' className='space-y-6'>
+            <ArchivedMedicalRecords />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Form Dialog */}
@@ -831,30 +1212,14 @@ export function MedicalRecordsManagement() {
         }}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente el registro médico. Esta
-              operación no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Archive Confirmation Dialog */}
+      <ArchiveMedicalRecordDialog
+        open={isArchiveDialogOpen}
+        onOpenChange={setIsArchiveDialogOpen}
+        record={selectedRecord}
+        onConfirm={confirmArchive}
+        isLoading={archiveMutation.isPending}
+      />
     </div>
   )
 }

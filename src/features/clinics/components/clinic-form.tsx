@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm, FormProvider, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -122,43 +122,8 @@ export function ClinicForm({
   const createClinic = useCreateClinic()
   const updateClinic = useUpdateClinic()
 
-  const methods = useForm({
-    resolver: zodResolver(createClinicSchema),
-    defaultValues: clinic
-      ? {
-          name: clinic.name,
-          address: clinic.address,
-          phone: clinic.phone,
-          email: clinic.email,
-          coordinates: clinic.coordinates,
-          description: clinic.description || '',
-          website: clinic.website || '',
-          workingHours:
-            clinic.workingHours || CLINIC_FORM_DEFAULTS.workingHours,
-          services: clinic.services,
-          amenities: clinic.amenities || [],
-          isActive: clinic.isActive,
-        }
-      : CLINIC_FORM_DEFAULTS,
-  })
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    setValue,
-    formState: { errors, isValid },
-    reset,
-  } = methods
-
-  const watchedServices = (watch('services') || []) as string[]
-  const watchedAmenities = (watch('amenities') || []) as string[]
-
-  // Reset form when clinic changes
-  useEffect(() => {
-    if (clinic) {
-      reset({
+  const defaultValues = clinic
+    ? {
         name: clinic.name,
         address: clinic.address,
         phone: clinic.phone,
@@ -167,10 +132,54 @@ export function ClinicForm({
         description: clinic.description || '',
         website: clinic.website || '',
         workingHours: clinic.workingHours || CLINIC_FORM_DEFAULTS.workingHours,
-        services: clinic.services,
+        services: clinic.services || [],
         amenities: clinic.amenities || [],
         isActive: clinic.isActive,
-      })
+      }
+    : CLINIC_FORM_DEFAULTS
+
+  const methods = useForm({
+    resolver: zodResolver(createClinicSchema),
+    defaultValues,
+    mode: 'onChange',
+    shouldUnregister: false,
+  })
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors, isValid },
+    reset,
+  } = methods
+
+  // Watch form values
+  const servicesValue = watch('services')
+  const amenitiesValue = watch('amenities')
+
+  const watchedServices = useMemo(() => servicesValue || [], [servicesValue])
+  const watchedAmenities = useMemo(() => amenitiesValue || [], [amenitiesValue])
+
+  // Reset form when clinic changes
+  useEffect(() => {
+    if (clinic) {
+      const resetData = {
+        name: clinic.name,
+        address: clinic.address,
+        phone: clinic.phone,
+        email: clinic.email,
+        coordinates: clinic.coordinates,
+        description: clinic.description || '',
+        website: clinic.website || '',
+        workingHours: clinic.workingHours || CLINIC_FORM_DEFAULTS.workingHours,
+        services: clinic.services || [],
+        amenities: clinic.amenities || [],
+        isActive: clinic.isActive,
+      }
+      reset(resetData)
     } else {
       reset(CLINIC_FORM_DEFAULTS)
     }
@@ -195,41 +204,51 @@ export function ClinicForm({
 
   const addService = () => {
     if (newService.trim() && !watchedServices.includes(newService.trim())) {
-      setValue('services', [...watchedServices, newService.trim()])
+      const newServices = [...watchedServices, newService.trim()]
+      setValue('services', newServices)
+      trigger('services') // Force revalidation
       setNewService('')
     }
   }
 
   const removeService = (serviceToRemove: string) => {
-    setValue(
-      'services',
-      watchedServices.filter((service) => service !== serviceToRemove)
+    const newServices = watchedServices.filter(
+      (service) => service !== serviceToRemove
     )
+    setValue('services', newServices)
+    trigger('services') // Force revalidation
   }
 
   const addServiceFromList = (service: string) => {
     if (!watchedServices.includes(service)) {
-      setValue('services', [...watchedServices, service])
+      const newServices = [...watchedServices, service]
+      setValue('services', newServices)
+      trigger('services') // Force revalidation
     }
   }
 
   const addAmenity = () => {
     if (newAmenity.trim() && !watchedAmenities.includes(newAmenity.trim())) {
-      setValue('amenities', [...watchedAmenities, newAmenity.trim()])
+      const newAmenities = [...watchedAmenities, newAmenity.trim()]
+      setValue('amenities', newAmenities)
+      trigger('amenities') // Force revalidation
       setNewAmenity('')
     }
   }
 
   const removeAmenity = (amenityToRemove: string) => {
-    setValue(
-      'amenities',
-      watchedAmenities.filter((amenity) => amenity !== amenityToRemove)
+    const newAmenities = watchedAmenities.filter(
+      (amenity) => amenity !== amenityToRemove
     )
+    setValue('amenities', newAmenities)
+    trigger('amenities') // Force revalidation
   }
 
   const addAmenityFromList = (amenity: string) => {
     if (!watchedAmenities.includes(amenity)) {
-      setValue('amenities', [...watchedAmenities, amenity])
+      const newAmenities = [...watchedAmenities, amenity]
+      setValue('amenities', newAmenities)
+      trigger('amenities') // Force revalidation
     }
   }
 
@@ -331,7 +350,6 @@ export function ClinicForm({
 
                       <FormField
                         label='Sitio Web'
-                        required
                         error={errors.website?.message}
                         icon={<Globe className='h-4 w-4' />}
                       >
@@ -347,7 +365,6 @@ export function ClinicForm({
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                       <FormField
                         label='Latitud'
-                        required
                         error={errors.coordinates?.lat?.message}
                         description='Coordenadas GPS'
                       >
@@ -364,7 +381,6 @@ export function ClinicForm({
 
                       <FormField
                         label='Longitud'
-                        required
                         error={errors.coordinates?.lng?.message}
                         description='Coordenadas GPS'
                       >

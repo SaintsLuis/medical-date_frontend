@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
-import { useForm, FormProvider, Controller } from 'react-hook-form'
+import { useForm, FormProvider, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -137,9 +137,9 @@ const createMedicalRecordSchema = (isEditMode: boolean) =>
       .string()
       .optional()
       .refine(
-        (val) => !val || (parseFloat(val) >= 20 && parseFloat(val) <= 80),
+        (val) => !val || (parseFloat(val) >= 0.5 && parseFloat(val) <= 2.5),
         {
-          message: 'La altura debe ser entre 20 y 80 pulgadas',
+          message: 'La altura debe ser entre 0.5 y 2.5 m',
         }
       ),
     oxygenSaturation: z
@@ -253,6 +253,10 @@ const VitalSignField = ({
   </FormField>
 )
 
+// Helper conversions between metric/imperial for interoperability with backend
+const metersToInches = (meters: number): number => meters * 39.3700787
+const inchesToMeters = (inches: number): number => inches / 39.3700787
+
 export function MedicalRecordForm({
   open,
   onOpenChange,
@@ -297,6 +301,35 @@ export function MedicalRecordForm({
     },
   })
 
+  // Extraer control para useWatch
+  const { control } = form
+  // Observaciones de campos requeridos
+  const [symptoms, diagnosis, patientProfileId, date] = useWatch({
+    control,
+    name: ['symptoms', 'diagnosis', 'patientProfileId', 'date'],
+  })
+  // Observaciones de signos vitales
+  const [
+    bloodPressure,
+    heartRate,
+    temperature,
+    weight,
+    height,
+    oxygenSaturation,
+    respiratoryRate,
+  ] = useWatch({
+    control,
+    name: [
+      'bloodPressure',
+      'heartRate',
+      'temperature',
+      'weight',
+      'height',
+      'oxygenSaturation',
+      'respiratoryRate',
+    ],
+  })
+
   // Enhanced data loading for edit mode
   useEffect(() => {
     if (record && open) {
@@ -326,7 +359,12 @@ export function MedicalRecordForm({
         heartRate: record.vitalSigns?.heartRate?.toString() || '',
         temperature: record.vitalSigns?.temperature?.toString() || '',
         weight: record.vitalSigns?.weight?.toString() || '',
-        height: record.vitalSigns?.height?.toString() || '',
+        // Convert backend inches -> meters for UI
+        height:
+          record.vitalSigns?.height !== undefined &&
+          record.vitalSigns?.height !== null
+            ? inchesToMeters(Number(record.vitalSigns.height)).toFixed(2)
+            : '',
         oxygenSaturation: record.vitalSigns?.oxygenSaturation?.toString() || '',
         respiratoryRate: record.vitalSigns?.respiratoryRate?.toString() || '',
         vitalSignsNotes: record.vitalSigns?.notes || '',
@@ -425,7 +463,13 @@ export function MedicalRecordForm({
                 heartRate: cleanVitalSignValue(data.heartRate),
                 temperature: cleanVitalSignValue(data.temperature),
                 weight: cleanVitalSignValue(data.weight),
-                height: cleanVitalSignValue(data.height),
+                // Convert UI meters -> backend inches
+                height: (() => {
+                  const v = cleanVitalSignValue(data.height)
+                  return v !== undefined
+                    ? Number(metersToInches(v).toFixed(2))
+                    : undefined
+                })(),
                 oxygenSaturation: cleanVitalSignValue(data.oxygenSaturation),
                 respiratoryRate: cleanVitalSignValue(data.respiratoryRate),
                 notes: data.vitalSignsNotes || undefined,
@@ -493,7 +537,12 @@ export function MedicalRecordForm({
           } else if (errorMessage.includes('peso')) {
             toast.error('Error en peso: Debe ser entre 5 y 330 lbs')
           } else if (errorMessage.includes('altura')) {
-            toast.error('Error en altura: Debe ser entre 20 y 80 pulgadas')
+            // Backend puede devolver mensaje en pulgadas; traducimos a metros para UI
+            if (errorMessage.includes('pulgadas')) {
+              toast.error('Error en altura: Debe ser entre 0.5 y 2.5 m')
+            } else {
+              toast.error('Error en altura')
+            }
           } else if (errorMessage.includes('frecuencia respiratoria')) {
             toast.error(
               'Error en frecuencia respiratoria: Debe ser entre 8 y 60 rpm'
@@ -507,7 +556,7 @@ export function MedicalRecordForm({
 
             if (vitalSignErrors.length > 0) {
               const errorMessages = vitalSignErrors.map((e) => {
-                if (e.includes('altura')) return 'Altura: entre 20-80 pulgadas'
+                if (e.includes('altura')) return 'Altura: entre 0.5-2.5 m'
                 if (e.includes('frecuencia respiratoria'))
                   return 'Frecuencia respiratoria: entre 8-60 rpm'
                 if (e.includes('peso')) return 'Peso: entre 5-330 lbs'
@@ -564,26 +613,19 @@ export function MedicalRecordForm({
     form.reset()
   }, [isSubmitting, form, onOpenChange])
 
-  // Check if form has required fields filled
-  const watchedValues = form.watch()
-
-  // Check required fields based on mode
-  const hasRequiredFields = (() => {
-    const hasSymptoms =
-      watchedValues.symptoms && watchedValues.symptoms.length >= 10
-    const hasDiagnosis =
-      watchedValues.diagnosis && watchedValues.diagnosis.length >= 10
+  // Check required fields based on mode (sin objetos, solo primitivos)
+  const hasRequiredFields = useMemo(() => {
+    const hasSymptoms = symptoms && symptoms.length >= 10
+    const hasDiagnosis = diagnosis && diagnosis.length >= 10
 
     if (isEditMode) {
       return hasSymptoms && hasDiagnosis
     } else {
-      const hasPatient =
-        watchedValues.patientProfileId &&
-        watchedValues.patientProfileId.trim() !== ''
-      const hasDate = watchedValues.date && watchedValues.date.trim() !== ''
-      return hasPatient && hasSymptoms && hasDiagnosis && hasDate
+      const hasPatient = patientProfileId && patientProfileId.trim() !== ''
+      const hasDate = date && date.trim() !== ''
+      return !!hasPatient && hasSymptoms && hasDiagnosis && !!hasDate
     }
-  })()
+  }, [symptoms, diagnosis, patientProfileId, date, isEditMode])
 
   const isFormValid = form.formState.isValid && hasRequiredFields
 
@@ -594,17 +636,20 @@ export function MedicalRecordForm({
       : (['patientProfileId', 'symptoms', 'diagnosis', 'date'] as const)
 
     form.trigger(fieldsToValidate)
-  }, [
-    watchedValues.symptoms,
-    watchedValues.diagnosis,
-    watchedValues.patientProfileId,
-    watchedValues.date,
-    isEditMode,
-  ])
+  }, [symptoms, diagnosis, patientProfileId, date, isEditMode, form])
 
   // Trigger validation for vital signs when they change
   useEffect(() => {
-    const vitalSignsFields = [
+    const values = [
+      bloodPressure,
+      heartRate,
+      temperature,
+      weight,
+      height,
+      oxygenSaturation,
+      respiratoryRate,
+    ]
+    const names = [
       'bloodPressure',
       'heartRate',
       'temperature',
@@ -614,23 +659,21 @@ export function MedicalRecordForm({
       'respiratoryRate',
     ] as const
 
-    // Only validate if the field has a value
-    const fieldsWithValues = vitalSignsFields.filter(
-      (field) =>
-        watchedValues[field] !== undefined && watchedValues[field] !== ''
+    const toValidate = names.filter(
+      (_, i) => values[i] !== undefined && values[i] !== ''
     )
-
-    if (fieldsWithValues.length > 0) {
-      form.trigger(fieldsWithValues)
+    if (toValidate.length > 0) {
+      form.trigger(toValidate)
     }
   }, [
-    watchedValues.bloodPressure,
-    watchedValues.heartRate,
-    watchedValues.temperature,
-    watchedValues.weight,
-    watchedValues.height,
-    watchedValues.oxygenSaturation,
-    watchedValues.respiratoryRate,
+    bloodPressure,
+    heartRate,
+    temperature,
+    weight,
+    height,
+    oxygenSaturation,
+    respiratoryRate,
+    form,
   ])
 
   if (!isDoctor) {
@@ -1003,11 +1046,12 @@ export function MedicalRecordForm({
 
                         <VitalSignField
                           label='Altura'
-                          unit='pulgadas'
+                          unit='m'
                           icon={<Ruler className='h-4 w-4' />}
-                          placeholder='20-80'
+                          placeholder='0.5-2.5'
                           register={form.register('height')}
                           error={form.formState.errors.height?.message}
+                          step='0.01'
                         />
                       </div>
 

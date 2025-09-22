@@ -84,16 +84,7 @@ export async function getClinicById(
 export async function getClinicStats(): Promise<
   ServerApiResponse<BackendClinicStats>
 > {
-  console.log('🔍 Calling clinic stats endpoint: /clinics/stats')
-
   const result = await serverApi.get<BackendClinicStats>('/clinics/stats')
-
-  console.log('📊 Clinic stats response:', {
-    success: result.success,
-    hasData: !!result.data,
-    error: result.error,
-  })
-
   return result
 }
 
@@ -107,18 +98,10 @@ export async function getClinicStats(): Promise<
 export async function createClinicAction(
   data: CreateClinicData
 ): Promise<ServerApiResponse<CreateClinicResponse>> {
-  console.log('🆕 Creating new clinic:', {
-    name: data.name,
-    address: data.address,
-  })
-
   const result = await serverApi.post<CreateClinicResponse>('/clinics', data)
 
   if (result.success) {
-    console.log('✅ Clinic created successfully:', result.data?.clinicId)
     revalidatePath('/(dashboard)/clinics')
-  } else {
-    console.error('❌ Failed to create clinic:', result.error)
   }
 
   return result
@@ -151,6 +134,24 @@ export async function deleteClinicAction(
 
   if (result.success) {
     revalidatePath('/(dashboard)/clinics')
+  } else {
+    // Provide more specific error handling
+    const errorMessage = result.error || 'Error al eliminar la clínica'
+
+    if (
+      typeof errorMessage === 'string' &&
+      errorMessage.includes('doctores asociados')
+    ) {
+      throw new Error(
+        'No se puede eliminar una clínica que tiene doctores asociados. Primero debe desasociar todos los doctores.'
+      )
+    } else {
+      throw new Error(
+        typeof errorMessage === 'string'
+          ? errorMessage
+          : 'Error al eliminar la clínica. Inténtalo de nuevo.'
+      )
+    }
   }
 
   return result

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,30 +18,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Download,
-  Trash2,
-  AlertCircle,
-} from 'lucide-react'
+import { MoreHorizontal, Eye, Edit, Download, AlertCircle } from 'lucide-react'
 import {
   Prescription,
   getPrescriptionStatusText,
   getPrescriptionStatusColor,
 } from '../types'
-import {
-  useDownloadPrescriptionPdf,
-  useDeletePrescription,
-} from '../hooks/use-prescriptions'
+import { useDownloadPrescriptionPdf } from '../hooks/use-prescriptions'
 
 interface PrescriptionsTableProps {
   prescriptions: Prescription[]
   loading?: boolean
   onView: (prescription: Prescription) => void
   onEdit: (prescription: Prescription) => void
-  onDelete?: (prescription: Prescription) => void
 }
 
 export function PrescriptionsTable({
@@ -50,41 +38,11 @@ export function PrescriptionsTable({
   loading = false,
   onView,
   onEdit,
-  onDelete,
 }: PrescriptionsTableProps) {
   const downloadMutation = useDownloadPrescriptionPdf()
-  const deleteMutation = useDeletePrescription()
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
   const handleDownload = async (prescription: Prescription) => {
     downloadMutation.mutate(prescription.id)
-  }
-
-  const handleDelete = async (prescription: Prescription) => {
-    if (!onDelete) return
-
-    try {
-      setDeletingIds((prev) => new Set(prev).add(prescription.id))
-      deleteMutation.mutate(prescription.id, {
-        onSuccess: () => {
-          onDelete(prescription)
-        },
-        onSettled: () => {
-          setDeletingIds((prev) => {
-            const newSet = new Set(prev)
-            newSet.delete(prescription.id)
-            return newSet
-          })
-        },
-      })
-    } catch (error) {
-      console.error('Error deleting prescription:', error)
-      setDeletingIds((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(prescription.id)
-        return newSet
-      })
-    }
   }
 
   const isExpired = (validUntil: string) => {
@@ -236,11 +194,7 @@ export function PrescriptionsTable({
                   <TableCell className='text-right'>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant='ghost'
-                          className='h-8 w-8 p-0'
-                          disabled={deletingIds.has(prescription.id)}
-                        >
+                        <Button variant='ghost' className='h-8 w-8 p-0'>
                           <span className='sr-only'>Abrir menú</span>
                           <MoreHorizontal className='h-4 w-4' />
                         </Button>
@@ -264,19 +218,6 @@ export function PrescriptionsTable({
                           <Edit className='mr-2 h-4 w-4' />
                           Editar
                         </DropdownMenuItem>
-
-                        {onDelete && (
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(prescription)}
-                            className='text-red-600'
-                            disabled={deletingIds.has(prescription.id)}
-                          >
-                            <Trash2 className='mr-2 h-4 w-4' />
-                            {deletingIds.has(prescription.id)
-                              ? 'Eliminando...'
-                              : 'Eliminar'}
-                          </DropdownMenuItem>
-                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

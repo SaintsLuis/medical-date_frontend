@@ -44,7 +44,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Search,
   Filter,
-  Plus,
   DollarSign,
   CreditCard,
   AlertCircle,
@@ -55,8 +54,6 @@ import {
   Eye,
   Receipt,
   Banknote,
-  Edit,
-  Trash2,
   BarChart3,
   CheckCircle,
   XCircle,
@@ -104,7 +101,7 @@ export function BillingManagement() {
 
   const { user } = useAuthStore()
   const isDoctor = user?.roles.includes(UserRole.DOCTOR)
-  const isAdmin = user?.roles.includes(UserRole.ADMIN)
+  // const isAdmin = user?.roles.includes(UserRole.ADMIN)
 
   // Billing stats
   const {
@@ -205,20 +202,15 @@ export function BillingManagement() {
     .filter((inv) => inv.status === 'PENDING' && inv.paymentMethod === 'CASH')
     .reduce((acc, inv) => acc + Number(inv.amount), 0)
 
-  const handleCreateNew = () => {
-    setSelectedInvoice(null)
-    setIsFormOpen(true)
-  }
+  // const handleCreateNew = () => {
+  //   setSelectedInvoice(null)
+  //   setIsFormOpen(true)
+  // }
 
-  const handleEdit = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setIsFormOpen(true)
-  }
-
-  const handleDelete = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setIsDeleteDialogOpen(true)
-  }
+  // const handleEdit = (invoice: Invoice) => {
+  //   setSelectedInvoice(invoice)
+  //   setIsFormOpen(true)
+  // }
 
   const handleConfirmDelete = async () => {
     if (!selectedInvoice) return
@@ -556,25 +548,7 @@ export function BillingManagement() {
                       >
                         <Download className='h-4 w-4' />
                       </Button>
-                      {isAdmin && (
-                        <>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleEdit(invoice)}
-                          >
-                            <Edit className='h-4 w-4' />
-                          </Button>
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleDelete(invoice)}
-                            className='text-red-600 hover:text-red-800'
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
-                        </>
-                      )}
+
                       {invoice.status === 'PENDING' &&
                         invoice.appointment?.type === 'IN_PERSON' &&
                         invoice.paymentMethod === 'CASH' && (
@@ -721,17 +695,6 @@ export function BillingManagement() {
                 <Download className='mr-2 h-4 w-4' />
                 Descargar PDF
               </Button>
-              {isAdmin && (
-                <Button
-                  onClick={() => {
-                    setIsDetailsOpen(false)
-                    handleEdit(selectedInvoice)
-                  }}
-                >
-                  <Edit className='mr-2 h-4 w-4' />
-                  Editar
-                </Button>
-              )}
             </div>
           </div>
         </DialogContent>
@@ -750,12 +713,12 @@ export function BillingManagement() {
             Administra facturas, pagos y estadísticas financieras
           </p>
         </div>
-        {isAdmin && (
+        {/* {isAdmin && (
           <Button onClick={handleCreateNew}>
             <Plus className='mr-2 h-4 w-4' />
             Nueva Factura
           </Button>
-        )}
+        )} */}
       </div>
 
       <MetricsCards />

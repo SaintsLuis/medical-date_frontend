@@ -4,6 +4,9 @@ import { UserProfile } from '@/features/auth/components/user-profile'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
+// Configuración para hacer la página dinámica (evita error de cookies)
+export const dynamic = 'force-dynamic'
+
 // Loading component para Suspense
 function ProfileSkeleton() {
   return (

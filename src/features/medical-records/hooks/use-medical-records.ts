@@ -14,15 +14,18 @@ import {
   getPatientMedicalRecordsByUserIdAction,
   getDoctorMedicalRecordsAction,
   getFollowUpRecordsAction,
+  getArchivedMedicalRecordsAction,
   createMedicalRecordAction,
   updateMedicalRecordAction,
   deleteMedicalRecordAction,
+  archiveMedicalRecordAction,
   getDoctorMedicalRecordAnalyticsAction,
 } from '../actions/medical-records-actions'
 import type {
   QueryMedicalRecordsParams,
   CreateMedicalRecordDto,
   UpdateMedicalRecordDto,
+  ArchiveMedicalRecordDto,
   MedicalRecord,
   PaginatedMedicalRecordsResponse,
   DoctorMedicalRecordAnalytics,
@@ -46,6 +49,9 @@ export const medicalRecordKeys = {
   doctor: (doctorId: string) =>
     [...medicalRecordKeys.all, 'doctor', doctorId] as const,
   followUp: () => [...medicalRecordKeys.all, 'follow-up'] as const,
+  archived: () => [...medicalRecordKeys.all, 'archived'] as const,
+  archivedList: (params: QueryMedicalRecordsParams) =>
+    [...medicalRecordKeys.archived(), params] as const,
   analytics: () => [...medicalRecordKeys.all, 'analytics'] as const,
   doctorAnalytics: (doctorId: string) =>
     [...medicalRecordKeys.analytics(), 'doctor', doctorId] as const,
@@ -264,6 +270,30 @@ export function useDoctorMedicalRecordAnalytics(
   })
 }
 
+export function useArchivedMedicalRecords(
+  params: QueryMedicalRecordsParams = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: medicalRecordKeys.archivedList(params),
+    queryFn: async (): Promise<PaginatedMedicalRecordsResponse> => {
+      const result = await getArchivedMedicalRecordsAction(params)
+      if (!result.success) {
+        throw new Error(
+          result.error || 'Error al cargar los registros archivados'
+        )
+      }
+      if (!result.data) {
+        throw new Error('No se recibieron datos del servidor')
+      }
+      return result.data
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+}
+
 // ==============================================
 // Mutation Hooks
 // ==============================================
@@ -377,6 +407,51 @@ export function useDeleteMedicalRecord() {
   })
 }
 
+export function useArchiveMedicalRecord() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string
+      data: ArchiveMedicalRecordDto
+    }): Promise<MedicalRecord> => {
+      const result = await archiveMedicalRecordAction(id, data)
+      if (!result.success) {
+        throw new Error(result.error || 'Error al archivar el registro médico')
+      }
+      if (!result.data) {
+        throw new Error('No se recibieron datos del servidor')
+      }
+      return result.data
+    },
+    onSuccess: (data, variables) => {
+      toast.success('Registro médico archivado exitosamente', {
+        description: 'El registro se ha movido al archivo y ya no es editable',
+      })
+
+      // Update the specific record in cache
+      queryClient.setQueryData(medicalRecordKeys.detail(variables.id), data)
+
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: medicalRecordKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: medicalRecordKeys.archived() })
+      queryClient.invalidateQueries({
+        queryKey: medicalRecordKeys.patient(data.patientProfileId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: medicalRecordKeys.doctor(data.doctorId),
+      })
+      queryClient.invalidateQueries({ queryKey: medicalRecordKeys.followUp() })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al archivar el registro médico')
+    },
+  })
+}
+
 // ==============================================
 // Prefetch Hooks
 // ==============================================
@@ -436,18 +511,22 @@ export function useMedicalRecordManagement() {
   const createMutation = useCreateMedicalRecord()
   const updateMutation = useUpdateMedicalRecord()
   const deleteMutation = useDeleteMedicalRecord()
+  const archiveMutation = useArchiveMedicalRecord()
 
   return {
     create: createMutation.mutateAsync,
     update: updateMutation.mutateAsync,
     delete: deleteMutation.mutateAsync,
+    archive: archiveMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isArchiving: archiveMutation.isPending,
     isLoading:
       createMutation.isPending ||
       updateMutation.isPending ||
-      deleteMutation.isPending,
+      deleteMutation.isPending ||
+      archiveMutation.isPending,
   }
 }
 
@@ -496,7 +575,9 @@ export {
   getPatientMedicalRecordsAction,
   getDoctorMedicalRecordsAction,
   getFollowUpRecordsAction,
+  getArchivedMedicalRecordsAction,
   createMedicalRecordAction,
   updateMedicalRecordAction,
   deleteMedicalRecordAction,
+  archiveMedicalRecordAction,
 }

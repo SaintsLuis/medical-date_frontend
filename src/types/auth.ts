@@ -16,6 +16,7 @@ export enum Permission {
   MANAGE_BILLING = 'MANAGE_BILLING',
   VIEW_ANALYTICS = 'VIEW_ANALYTICS',
   MANAGE_SYSTEM = 'MANAGE_SYSTEM',
+  MEDICAL_RECORD_ARCHIVE = 'MEDICAL_RECORD_ARCHIVE',
 
   // Doctor permissions
   VIEW_APPOINTMENTS = 'VIEW_APPOINTMENTS',
@@ -193,6 +194,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.MANAGE_BILLING,
     Permission.VIEW_ANALYTICS,
     Permission.MANAGE_SYSTEM,
+    Permission.MEDICAL_RECORD_ARCHIVE,
     Permission.VIEW_APPOINTMENTS,
     Permission.MANAGE_APPOINTMENTS,
     Permission.VIEW_MEDICAL_RECORDS,

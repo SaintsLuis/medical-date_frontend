@@ -107,12 +107,15 @@ export function UserForm({
   }
 
   // Debug logs
+  // Extraer valores observados para evitar expresiones complejas en dependencias
+  const watchedValues = form.watch()
+
   React.useEffect(() => {
     console.log('=== DEBUG FORM STATE ===')
     console.log('isDirty:', form.formState.isDirty)
     console.log('isValid:', form.formState.isValid)
     console.log('isPending:', updateUser.isPending)
-    console.log('Current values:', form.watch())
+    console.log('Current values:', watchedValues)
     console.log('Initial values:', {
       email: user.email,
       firstName: user.firstName,
@@ -132,8 +135,9 @@ export function UserForm({
     form.formState.isValid,
     form.formState.errors,
     updateUser.isPending,
-    form.watch(),
+    watchedValues,
     user,
+    form,
   ])
 
   // Cancel handler
