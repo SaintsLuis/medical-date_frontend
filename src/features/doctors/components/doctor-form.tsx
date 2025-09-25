@@ -50,7 +50,10 @@ import type {
   UpdateDoctorData,
   DoctorFormData,
 } from '../types'
-import { createDoctorAction } from '../actions/doctor-actions'
+import {
+  createDoctorAction,
+  updateDoctorAvailabilityAction,
+} from '../actions/doctor-actions'
 import { useUpdateDoctor } from '../hooks/use-doctors'
 
 // ==============================================
@@ -385,8 +388,28 @@ export function DoctorForm({
         })
 
         if (result.success && result.data) {
-          toast.success('Doctor actualizado exitosamente')
-          onSuccess?.()
+          // Actualizar disponibilidad después de actualizar el doctor
+          const availabilityPayload = availability.map((avail) => ({
+            dayOfWeek: avail.dayOfWeek,
+            startTime: avail.startTime,
+            endTime: avail.endTime,
+            isAvailable: avail.isAvailable,
+          }))
+
+          const availabilityResult = await updateDoctorAvailabilityAction(
+            doctor.id,
+            availabilityPayload
+          )
+
+          if (availabilityResult.success) {
+            toast.success('Doctor y disponibilidad actualizados exitosamente')
+            onSuccess?.()
+          } else {
+            toast.warning(
+              'Doctor actualizado, pero hubo un error al actualizar la disponibilidad'
+            )
+            onSuccess?.()
+          }
         } else {
           toast.error(result.error || 'Error al actualizar el doctor')
         }

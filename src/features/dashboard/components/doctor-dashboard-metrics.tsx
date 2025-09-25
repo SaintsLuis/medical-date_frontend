@@ -161,7 +161,7 @@ export function DoctorDashboardMetrics() {
         <MetricCard
           title='Ingresos del Mes'
           value={`$${billing.thisMonthRevenue.toLocaleString()}`}
-          description={`$${billing.totalRevenue.toLocaleString()} total`}
+          // description={`$${billing.totalRevenue.toLocaleString()} total`}
           icon={<DollarSign className='w-4 h-4' />}
           color='green'
         />
