@@ -324,12 +324,12 @@ export function MedicalRecordsManagement() {
               </Badge>
             )}
           </TabsTrigger>
-          {isAdmin && (
+          {/* {isAdmin && (
             <TabsTrigger value='archived'>
               <Archive className='mr-2 h-4 w-4' />
               Archivados
             </TabsTrigger>
-          )}
+          )} */}
         </TabsList>
 
         {/* Records Tab */}

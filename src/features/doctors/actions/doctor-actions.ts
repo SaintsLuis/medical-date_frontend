@@ -218,7 +218,12 @@ export async function getDoctorAvailabilityAction(
  */
 export async function updateDoctorAvailabilityAction(
   doctorId: string,
-  availability: Record<string, unknown>
+  availability: Array<{
+    dayOfWeek: number
+    startTime: string
+    endTime: string
+    isAvailable: boolean
+  }>
 ): Promise<ServerApiResponse<Record<string, unknown>>> {
   const result = await serverApi.patch<Record<string, unknown>>(
     `/doctors/${doctorId}/availability`,
